@@ -37,7 +37,8 @@
     ".gitignore",
     "vendor",
     "install.cmd",
-    "install.sh"
+    "install.sh",
+    "setup.cmd"
   ],
   "dsh": {
     "bundle": {
