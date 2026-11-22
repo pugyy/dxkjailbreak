@@ -440,23 +440,72 @@ function ensureHostBase() {
       return p ? path.dirname(p) : null;
     } catch { return null; }
   })();
-  for (const home of [regHome, procHome].filter(Boolean)) {
+  // PATH 里 dsh shim 反查（shim 文件内写死宿主路径——手动搬家、注册表失效的机器也能命中）
+  const shimHome = (() => {
+    try {
+      const w = spawnSync("where", ["dsh"], { encoding: "utf8", timeout: 10000, shell: true });
+      for (const line of String(w.stdout || "").split(/\r?\n/)) {
+        const shim = line.trim();
+        if (!shim || !/\.(cmd|bat|ps1)$/i.test(shim) || !fs.existsSync(shim)) continue;
+        const txt = fs.readFileSync(shim, "utf8");
+        const m = txt.match(/[A-Za-z]:\\[^\r\n"'*?<>|]*DeepSeek Harness/i);
+        if (m) {
+          const p = m[0].replace(/\\/g, "/");
+          const idx = p.toLowerCase().indexOf("deepseek harness");
+          return p.slice(0, idx + "DeepSeek Harness".length);
+        }
+      }
+    } catch {}
+    return null;
+  })();
+  for (const home of [regHome, procHome, shimHome].filter(Boolean)) {
     for (const sub of [path.join("resources", "app"), path.join("resources", "app.asar.unpacked"), "resources", ""]) {
       extra.push(path.join(home, sub, "dsh", "node_modules", "@deepseek-ai"));
       extra.push(path.join(home, sub, "node_modules", "@deepseek-ai"));
     }
   }
   // 常见盘符位置（自定义安装根：C:\DeepSeek Harness、D:\Programs\DeepSeek Harness 等）
-  for (const drv of "CDEFGH".split("").map((d) => d + ":/").filter((d) => fs.existsSync(d))) {
+  const drives = "CDEFGH".split("").map((d) => d + ":/").filter((d) => fs.existsSync(d));
+  const asarHomes = [];
+  const pushHome = (home) => {
+    for (const sub of [path.join("resources", "app"), path.join("resources", "app.asar.unpacked"), "resources", ""]) {
+      extra.push(path.join(home, sub, "dsh", "node_modules", "@deepseek-ai"));
+      extra.push(path.join(home, sub, "node_modules", "@deepseek-ai"));
+    }
+    // asar 打包分发的宿主：有 app.asar 但没有可用目录 → 记下来，失败时给专门指引
+    const res = path.join(home, "resources");
+    try {
+      if (fs.statSync(path.join(res, "app.asar")).isFile() && !fs.existsSync(path.join(res, "app"))) asarHomes.push(res);
+    } catch {}
+  };
+  for (const drv of drives) {
     for (const base of ["DeepSeek Harness", "Programs/DeepSeek Harness", "Program Files/DeepSeek Harness", "Program Files (x86)/DeepSeek Harness"]) {
       const home = path.join(drv, base);
       if (!fs.existsSync(home)) continue;
-      for (const sub of [path.join("resources", "app"), path.join("resources", "app.asar.unpacked"), "resources", ""]) {
-        extra.push(path.join(home, sub, "dsh", "node_modules", "@deepseek-ai"));
-        extra.push(path.join(home, sub, "node_modules", "@deepseek-ai"));
-      }
+      pushHome(home);
+    }
+    // 盘根二级扫描（手动搬家场景：C:\merged_from_E\DeepSeek Harness）
+    let lvl1 = [];
+    try { lvl1 = fs.readdirSync(drv, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch { continue; }
+    for (const name of lvl1) {
+      const home = path.join(drv, name, "DeepSeek Harness");
+      if (!fs.existsSync(home)) continue;
+      pushHome(home);
     }
   }
+  // ~/.dsh 顶层配置线索反查（浅层：宿主可能在配置里留过绝对路径）
+  try {
+    outer: for (const e of fs.readdirSync(DSH_HOME, { withFileTypes: true })) {
+      if (!e.isFile() || !/\.(json|yml|yaml|txt|cmd|ps1)$/i.test(e.name)) continue;
+      const txt = fs.readFileSync(path.join(DSH_HOME, e.name), "utf8").slice(0, 65536);
+      const m = txt.match(/[A-Za-z]:\\[^\r\n"'*?<>|]*DeepSeek Harness/i);
+      if (!m) continue;
+      const p = m[0].replace(/\\/g, "/");
+      const idx = p.toLowerCase().indexOf("deepseek harness");
+      pushHome(p.slice(0, idx + "DeepSeek Harness".length));
+      break outer;
+    }
+  } catch {}
   cands.push(...extra);
   // npm 全局安装（CLI / web 版）
   cands.push(path.join(process.env.APPDATA || "", "npm", "node_modules", "@deepseek-ai", "dsh", "node_modules", "@deepseek-ai"));
@@ -475,7 +524,12 @@ function ensureHostBase() {
     log("已自动定位宿主根（DSH_BASE）: " + c);
     return true;
   }
-  log("警告：未自动定位宿主根 —— 已尝试 " + cands.length + " 个候选位置，apply/revert 将失败。");
+  log("警告：未自动定位宿主根 —— 已尝试 " + cands.length + " 个候选位置（注册表/进程/shim/盘符一级+二级/.dsh 线索），apply/revert 将失败。");
+  if (asarHomes.length) {
+    log("  发现 asar 打包的宿主：" + [...new Set(asarHomes)].join(" | "));
+    log("  宿主是单文件归档分发，普通文件访问进不去 —— 就地解包后重跑即可：");
+    log("    cd <上述目录> && npx @electron/asar extract app.asar app");
+  }
   log("  自救 1（推荐）：先查真实安装位置 →");
   log('    reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\DeepSeek Harness" /v InstallLocation');
   log("  自救 2：把 DSH_BASE 指向含 dsh-agent-instructions\\lib 的 @deepseek-ai 目录后重跑，例如：");
