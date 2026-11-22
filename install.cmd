@@ -1,5 +1,6 @@
 @echo off
 setlocal
+chcp 65001 >nul 2>nul
 title dxkjailbreak installer
 cd /d "%~dp0"
 

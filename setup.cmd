@@ -1,7 +1,9 @@
 @echo off
-rem dxkjailbreak - AI-friendly installer: no pause, exits with a real code.
-rem 供自动化/AI 助手调用：不等待按键，输出可直接解析。
+rem dxkjailbreak - AI-friendly installer: no pause, real exit code.
+rem For automated / AI-assisted invocation. See install.cmd for the
+rem interactive double-click variant.
 setlocal
+chcp 65001 >nul 2>nul
 cd /d "%~dp0"
 
 where node >nul 2>nul
@@ -13,6 +15,7 @@ if errorlevel 1 (
 node install.mjs
 set "RC=%ERRORLEVEL%"
 echo.
+echo ------------------------------------------------------------
 if "%RC%"=="0" (
   echo [RESULT] OK - installed. Restart DSH to take effect.
 ) else (
