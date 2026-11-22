@@ -413,6 +413,51 @@ function ensureHostBase() {
     cands.push(path.join(appRoot, "dsh", "node_modules", "@deepseek-ai"));
     cands.push(path.join(appRoot, "node_modules", "@deepseek-ai"));
   }
+  // 实战教训（自定义安装位置，如 C:\merged_from_E\DeepSeek Harness）：LOCALAPPDATA
+  // 候选全落空。补三层兜底：注册表 → 运行中进程 → 常见盘符位置，逐层探测。
+  const extra = [];
+  const regHome = (() => {
+    for (const hive of [
+      "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DeepSeek Harness",
+      "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\DeepSeek Harness",
+      "HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\DeepSeek Harness",
+    ]) {
+      try {
+        const r = spawnSync("reg", ["query", hive, "/v", "InstallLocation"], { encoding: "utf8", timeout: 10000, shell: true });
+        const m = r.stdout && String(r.stdout).match(/InstallLocation\s+REG_(?:SZ|EXPAND_SZ)\s+(.+)/);
+        if (m && m[1].trim()) return m[1].trim();
+      } catch {}
+    }
+    return null;
+  })();
+  const procHome = (() => {
+    try {
+      const r = spawnSync("powershell", ["-NoProfile", "-Command",
+        "@(Get-Process | Where-Object { $_.Path -like '*DeepSeek Harness*' } | Select-Object -First 1 -ExpandProperty Path)"],
+        { encoding: "utf8", timeout: 15000 });
+      const p = String(r.stdout || "").trim().split("\r?\n")[0].trim();
+      // 进程可执行文件在 <安装目录>\ 下（如 ...\DeepSeek Harness\DSH.exe）
+      return p ? path.dirname(p) : null;
+    } catch { return null; }
+  })();
+  for (const home of [regHome, procHome].filter(Boolean)) {
+    for (const sub of [path.join("resources", "app"), path.join("resources", "app.asar.unpacked"), "resources", ""]) {
+      extra.push(path.join(home, sub, "dsh", "node_modules", "@deepseek-ai"));
+      extra.push(path.join(home, sub, "node_modules", "@deepseek-ai"));
+    }
+  }
+  // 常见盘符位置（自定义安装根：C:\DeepSeek Harness、D:\Programs\DeepSeek Harness 等）
+  for (const drv of "CDEFGH".split("").map((d) => d + ":/").filter((d) => fs.existsSync(d))) {
+    for (const base of ["DeepSeek Harness", "Programs/DeepSeek Harness", "Program Files/DeepSeek Harness", "Program Files (x86)/DeepSeek Harness"]) {
+      const home = path.join(drv, base);
+      if (!fs.existsSync(home)) continue;
+      for (const sub of [path.join("resources", "app"), path.join("resources", "app.asar.unpacked"), "resources", ""]) {
+        extra.push(path.join(home, sub, "dsh", "node_modules", "@deepseek-ai"));
+        extra.push(path.join(home, sub, "node_modules", "@deepseek-ai"));
+      }
+    }
+  }
+  cands.push(...extra);
   // npm 全局安装（CLI / web 版）
   cands.push(path.join(process.env.APPDATA || "", "npm", "node_modules", "@deepseek-ai", "dsh", "node_modules", "@deepseek-ai"));
   // 当前 profile 自己装的
@@ -430,7 +475,12 @@ function ensureHostBase() {
     log("已自动定位宿主根（DSH_BASE）: " + c);
     return true;
   }
-  log("警告：未自动定位宿主根 —— apply/revert 可能失败。可手动设置 DSH_BASE 后重跑。");
+  log("警告：未自动定位宿主根 —— 已尝试 " + cands.length + " 个候选位置，apply/revert 将失败。");
+  log("  自救 1（推荐）：先查真实安装位置 →");
+  log('    reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\DeepSeek Harness" /v InstallLocation');
+  log("  自救 2：把 DSH_BASE 指向含 dsh-agent-instructions\\lib 的 @deepseek-ai 目录后重跑，例如：");
+  log('    PowerShell:  $env:DSH_BASE = "C:\\<安装目录>\\resources\\app\\dsh\\node_modules\\@deepseek-ai"');
+  log("  注意：若安装目录只有 app.asar（单文件归档），先解包再指：npx @electron/asar extract app.asar app");
   return false;
 }
 
@@ -484,14 +534,20 @@ function updateProfilePackage(add) {
     return { pkg, change: changed ? { file: pjPath, before, after: JSON.stringify(pkg, null, 2) + "\n" } : null };
   }
 
-  pkg.dependencies ??= {};
-  pkg.dsh ??= {};
-  pkg.dsh.profile ??= {};
-  pkg.dsh.profile.bundles ??= [];
   const files = [{ name: "dxkjailbreak", path: PLUGIN_ROOT }, ...collectSubPlugins().map((plugin) => ({
     name: plugin.name,
     path: path.join(PLUGIN_ROOT, "plugins", plugin.dir),
   }))];
+  pkg.dependencies ??= {};
+  pkg.dsh ??= {};
+  pkg.dsh.profile ??= {};
+  pkg.dsh.profile.bundles ??= [];
+  // 半安装教训（实战）：登记前快照第三方依赖，写回后校验一个不少。
+  // （本产品只增量登记自己的 18 个条目；若 pnpm 阶段仍出现第三方包被移除，
+  //  是旧 lockfile 与清单不一致的对齐行为，快照可用于排障与恢复。）
+  const ours = new Set(files.map((f) => f.name));
+  const foreignBefore = Object.fromEntries(Object.entries(pkg.dependencies).filter(([n]) => !ours.has(n)));
+  ledger.foreignSnapshot = foreignBefore;
 
   for (const entry of files) {
     const current = Object.hasOwn(pkg.dependencies, entry.name) ? pkg.dependencies[entry.name] : null;
@@ -508,9 +564,12 @@ function updateProfilePackage(add) {
   }
 
   fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
+  const lost = Object.keys(foreignBefore).filter((n) => !Object.hasOwn(pkg.dependencies, n));
+  if (lost.length) throw new Error("profile 第三方依赖在校验时丢失（" + lost.join(", ") + "）—— 已中止，清单未写入。");
   atomicWriteSync(ledgerPath, JSON.stringify(ledger, null, 2) + "\n", "utf8", { mode: 0o600 });
   atomicWriteSync(pjPath, JSON.stringify(pkg, null, 2) + "\n");
-  log("已登记 profile 依赖与 bundles：" + files.length + " 个包");
+  const kept = Object.keys(foreignBefore).length;
+  log("已登记 profile 依赖与 bundles：" + files.length + " 个包" + (kept ? "（另保留既有第三方依赖 " + kept + " 个，未触碰）" : ""));
 }
 
 /** 解析 pnpm：PATH 优先，退到 DSH 内置 runtime 的 pnpm.cjs（Windows 实测 PATH 常无 pnpm） */
