@@ -1,0 +1,30 @@
+{
+    "name":  "@dxkjailbreak/dsh-product-subagents",
+    "version":  "1.1.0",
+    "description":  "DSH subagent providers for the local claude-code / codex CLIs: registers the host-plane \u0027claude-code\u0027 and \u0027codex\u0027 providers the nine security presets\u0027 tool rows name. The CLIs keep their own model backend config (~/.claude/settings.json env, ~/.codex/config.toml); this plugin only spawns them headless and maps exit to a subagent run.",
+    "keywords":  [
+                     "deepseek",
+                     "deepseek-harness",
+                     "dsh-plugin",
+                     "dsh-bundle",
+                     "subagent-provider",
+                     "claude-code",
+                     "codex"
+                 ],
+    "type":  "module",
+    "main":  "./lib/index.js",
+    "exports":  {
+                    ".":  "./lib/index.js",
+                    "./package.json":  "./package.json"
+                },
+    "peerDependencies":  {
+                             "@deepseek-ai/dsh-subagent":  "*"
+                         },
+    "license":  "MIT",
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           }
+            },
+    "author":  "dxk"
+}

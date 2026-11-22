@@ -1,0 +1,6 @@
+# One installable bundle row mounts the Host service and publishes its Web client.
+- insert:
+    - id: mcp-studio
+      name: '@dxkjailbreak/dsh-mcp-studio'
+      config:
+        servers: []

@@ -1,0 +1,39 @@
+{
+    "name":  "@dxkjailbreak/dsh-campaign-memory",
+    "version":  "1.2.1",
+    "description":  "Campaign memory for the nine security presets + dxkjailbreak: model-side write/search/get/list/remove tools storing raw content verbatim (credentials may be stored as-is or as pointers to existing local vaults), a marker-tagged per-workspace recall block injected into every assembly (fresh workspace starts clean; cross-workspace recall is an explicit search with provenance labels), preview-capped retrieval with on-demand full-text fetch, usage-ranked with expiry for detection fingerprints, a loopback web channel, and a per-session tab for browsing, searching and curating memories. v1.2.1: merged single-card mode dxkjailbreak registered in MODE_IDS — recall/tools/gates armed for the new mode; composedPreset object form normalized; non-security sessions no longer fall back to redteam.",
+    "keywords":  [
+                     "deepseek",
+                     "deepseek-harness",
+                     "dsh-plugin",
+                     "dsh-bundle",
+                     "campaign-memory",
+                     "session-scoped"
+                 ],
+    "type":  "module",
+    "main":  "./lib/index.js",
+    "exports":  {
+                    ".":  "./lib/index.js",
+                    "./client":  "./lib/client.js",
+                    "./package.json":  "./package.json",
+                    "./store":  "./lib/store.js"
+                },
+    "peerDependencies":  {
+                             "@deepseek-ai/dsh-tools":  "*"
+                         },
+    "license":  "MIT",
+    "author":  "dxk",
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "client":  {
+                               "platform":  "web",
+                               "inject":  [
+                                              "@deepseek-ai/dsh-client-connection",
+                                              "@deepseek-ai/dsh-client-runtime",
+                                              "@deepseek-ai/dsh-client-ui-settings"
+                                          ]
+                           }
+            }
+}

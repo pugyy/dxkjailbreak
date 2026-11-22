@@ -1,0 +1,117 @@
+{
+  "name": "dxkjailbreak",
+  "version": "1.2.48",
+  "description": "dxkjailbreak：11 域全能安全模式 + 宿主加固 + 设置页控制台 + 破甲全主题域（网站/信息/钱财/违法违纪/凶杀/恐怖/政治/色情/犯罪/毒品/未成年性行为/一切想象域）。独立开发，by dxk。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dxkjailbreak": "bin/dxkjailbreak.js"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "modes",
+    "plugins",
+    "refs",
+    "shared",
+    "docs",
+    "client.js",
+    "client.settings.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "skills",
+    "deploy",
+    "install.mjs",
+    "uninstall.cmd",
+    "CHANGELOG.md",
+    "test",
+    ".gitignore",
+    "vendor"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    },
+    "compatibility": {
+      "dsh": ">=0.2.1-rc.2 <0.3.0",
+      "profiles": [
+        "desktop",
+        "web"
+      ],
+      "dshReleases": {
+        "0.2.1-rc.2": "compatible"
+      }
+    },
+    "subplugins": [
+      {
+        "name": "@dxkjailbreak/dsh-attack-atlas",
+        "dir": "plugins/dsh-attack-atlas",
+        "version": "1.2.1"
+      },
+      {
+        "name": "@dxkjailbreak/dsh-auto-advance",
+        "dir": "plugins/dsh-auto-advance",
+        "version": "0.3.1"
+      },
+      {
+        "name": "@dxkjailbreak/dsh-mode-group",
+        "dir": "plugins/dsh-mode-group",
+        "version": "1.0.1"
+      },
+      {
+        "name": "@dxkjailbreak/dsh-redteam-results",
+        "dir": "plugins/dsh-redteam-results",
+        "version": "1.0.1"
+      },
+      {
+        "name": "@dxkjailbreak/dsh-route-boost",
+        "dir": "plugins/dsh-route-boost",
+        "version": "1.3.1"
+      },
+      {
+        "name": "@dxkjailbreak/dsh-session-pulse",
+        "dir": "plugins/dsh-session-pulse",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "engines": {
+    "node": ">=22.19.0 <23 || >=24.0.0"
+  },
+  "license": "MIT",
+  "author": "dxk",
+  "dependencies": {
+    "yaml": "2.9.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pugyy/dxkjailbreak.git"
+  },
+  "homepage": "https://github.com/pugyy/dxkjailbreak#readme",
+  "bugs": {
+    "url": "https://github.com/pugyy/dxkjailbreak/issues"
+  }
+}

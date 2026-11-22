@@ -1,0 +1,29 @@
+{
+  "name": "@dxkjailbreak/dsh-sec-enforce",
+  "version": "1.4.6",
+  "description": "DSH host-plane deterministic enforcement for the security presets : ctx.tools.guard() pre-execute interception — report files require a stage_gate PASS in gate-log.md, writes stay inside the task workspace (least privilege), conservative high-risk bash patterns must go through the ask-first flow, and bare full-port scans without rate controls are rejected with the fix. Guards fire only for the security presets; every denial appends to the workspace enforce-log.md. v1.1.0 adds the ask tier: reversible-but-invasive classes (account/privilege changes, firewall rule edits, flood stress) route through the tools/pre-execute waterfall into the host approval service (allowed-once or deny) instead of a hard block. v1.2.0: open intents block report writes until closed (intentGate, default on); the redteam controller's task briefs (task-briefs/*.md) must carry a 依据/锚点 line naming what justified opening the brief. v1.3.0 constraintGate: keyword-bearing deny constraints from the task ledger intercept matching bash commands and fetch URLs, citing the constraint text; prompt-only constraints stay envelope-injected. v1.4.2 target-side zero-destruction tier: Windows deletion family (Remove-Item -Recurse / rd /s / del /s against drive roots or system dirs, matching the rm-root scope) and format/erase commands (format X:, mkfs) are deterministically blocked, with denial texts citing the target-side zero-destruction clause. v1.4.4: denial texts aligned to the 99%-execution-primacy regime (commanded target-side operations run on confirmation and are logged; the remaining hard gates stay as explicit named exceptions). v1.4.5 master-confirmation escape hatch: a keyword-bearing allow constraint from the task ledger (operation_constraints, master-confirmed) overrides the hard gates (dangerousOps/rateDiscipline) for the matched command — a commanded format/delete/reboot runs and is logged as an override row in enforce-log.md; user red lines (deny constraints) always win. v1.4.6 merged single-card mode: dxkjailbreak registered in SECURITY_MODES so the gates (report/write-boundary/ask/rate/intent/constraint/kill) apply in the 11-domain card exactly as in the ten legacy modes.",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh-bundle",
+    "deterministic-gates",
+    "least-privilege"
+  ],
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "author": "dxk"
+}
