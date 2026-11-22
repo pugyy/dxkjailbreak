@@ -35,7 +35,9 @@
     "CHANGELOG.md",
     "test",
     ".gitignore",
-    "vendor"
+    "vendor",
+    "install.cmd",
+    "install.sh"
   ],
   "dsh": {
     "bundle": {
@@ -105,13 +107,5 @@
   "author": "dxk",
   "dependencies": {
     "yaml": "2.9.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pugyy/dxkjailbreak.git"
-  },
-  "homepage": "https://github.com/pugyy/dxkjailbreak#readme",
-  "bugs": {
-    "url": "https://github.com/pugyy/dxkjailbreak/issues"
   }
 }

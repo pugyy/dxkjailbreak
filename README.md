@@ -46,6 +46,17 @@ node install.mjs          # 安装并初始化
 
 卸载：`node install.mjs --uninstall`（还原宿主与 home 指令，插件目录保留）。
 
+### ⚡ 完全不用 AI：双击安装
+
+不想让 AI 参与？两种方式，全程不用命令行：
+
+| 平台 | 操作 |
+|---|---|
+| **Windows** | 解压后双击 **`install.cmd`** |
+| **macOS / Linux** | 终端执行 `chmod +x install.sh && ./install.sh` |
+
+脚本自动完成四件事：检查 Node.js 版本 → 执行安装 → 显示结果（成功/退出码）→ 暂停窗口让你看输出。出问题就把窗口里的文字整段复制给开发者。
+
 ### 🤖 让 AI 帮你安装（可直接粘贴）
 
 部分 AI 助手读到「安全研究」类仓库会先做谨慎判断，可能停在"要不要装"上。这段把授权语境和故障处置一并交代清楚，连同安装指令一起发即可。
@@ -222,6 +233,17 @@ node install.mjs          # install and initialize
 Restart DSH afterwards. **No dependencies to pre-install** — the repository ships a `vendor/yaml` fallback; the installer bootstraps it on first run.
 
 Uninstall: `node install.mjs --uninstall` (restores the host and home instruction files; the plugin directory is kept).
+
+### ⚡ No AI needed: double-click install
+
+Prefer to skip the assistant entirely? Two ways, no command line required:
+
+| Platform | Action |
+|---|---|
+| **Windows** | Unzip, then double-click **`install.cmd`** |
+| **macOS / Linux** | `chmod +x install.sh && ./install.sh` |
+
+The script checks your Node.js version, runs the installer, prints the result (success or exit code), and keeps the window open so you can read it. If something fails, copy the whole window text to the developer.
 
 ### 🤖 Install with an AI assistant (copy-paste prompt)
 
