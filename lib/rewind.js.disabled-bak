@@ -1,0 +1,38 @@
+// dxkjailbreak · by dxk
+/**
+ * rewind.js —— 回退功能已移除
+ *
+ * 保留同名导出，避免 lib/index.js 的 `import * as rewind` 断裂。
+ * 所有函数均为空实现：调用方拿到的都是 disabled 结果。
+ *
+ * 要恢复回退功能：
+ *   1) cp rewind.js.bak rewind.js
+ *   2) cp index.js.bak index.js
+ *   3) purge-community rewind on  → 重开 DSH
+ */
+
+const DISABLED = Object.freeze({ ok: false, disabled: true, reason: "rewind-removed" });
+
+export function pendingInboxInserts() { return []; }
+export function lastTurnSubagentIds() { return []; }
+export function planRewind() { return { ...DISABLED }; }
+export function isRewindDerivedMessage() { return false; }
+export function cutSurfaceNodes(nodes) { return nodes; }
+export function getDraft() { return undefined; }
+export function takeDraft() { return undefined; }
+export function getPending() { return null; }
+export function lastHumanUserText() { return ""; }
+export async function readLastUserText() { return ""; }
+export function wrapSessionDeriveMessages(session) { return session; }
+export function invocationSessionId(inv) {
+  return inv?.session?.id ?? inv?.sessionId ?? undefined;
+}
+export async function analyzeRewind() { return { ...DISABLED }; }
+export async function applyRewind() { return { ...DISABLED }; }
+
+export default {
+  pendingInboxInserts, lastTurnSubagentIds, planRewind, isRewindDerivedMessage,
+  cutSurfaceNodes, getDraft, takeDraft, getPending, lastHumanUserText,
+  readLastUserText, wrapSessionDeriveMessages, invocationSessionId,
+  analyzeRewind, applyRewind,
+};

@@ -1,0 +1,23 @@
+{
+  "name": "sysinfo",
+  "version": "1.0.0",
+  "type": "tool",
+  "langs": [
+    "php"
+  ],
+  "protocols": [
+    "cmd-eval",
+    "dsh-aes",
+    "behinder",
+    "godzilla"
+  ],
+  "params": [
+    {
+      "key": "cmd",
+      "label": "附加命令（可选）",
+      "type": "string",
+      "default": ""
+    }
+  ],
+  "entry": "payload.php"
+}

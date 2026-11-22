@@ -1,0 +1,17 @@
+# 依赖（本地开发跑 install.mjs 时生成，不入库）
+node_modules/
+
+# 运行时备份与暂存
+*.bak
+*.dshpurge.bak
+.dxk-deploy-*/
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志与临时
+*.log
+*.tmp
+*.swp

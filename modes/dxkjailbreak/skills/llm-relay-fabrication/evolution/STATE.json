@@ -1,0 +1,13 @@
+{
+  "compiledAt": "2026-10-28T16:30:07.765Z",
+  "ruleCount": 8,
+  "byTag": {
+    "probe": 1,
+    "model": 1,
+    "auth": 1,
+    "usage": 2,
+    "sched": 1,
+    "risk": 1,
+    "retry": 1
+  }
+}
