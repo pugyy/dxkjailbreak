@@ -94,7 +94,7 @@ D:\下载\dxkjailbreak-1.2.48-preview.zip
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `Cannot find package 'yaml'` | 1.2.48 前的版本缺依赖兜底 | 确认仓库 `vendor/yaml/` 存在后重跑；或 `npm i yaml --no-save` 再装 |
-| `插件根未找到 / set DSH_BASE` | 自动探测没定位到宿主 | 手动指定：`$env:DSH_BASE="<DSH目录>\node_modules\@deepseek-ai"`（macOS/Linux 用 `export`）后重跑 |
+| `插件根未找到 / set DSH_BASE` | 自动探测没定位到宿主（自定义安装位置） | 安装器依次探测注册表 → 运行中进程 → 常见盘符位置。仍失败按报错里的自救指引：① `reg query` 查真实 InstallLocation；② 把 `DSH_BASE` 指到含 `dsh-agent-instructions\lib` 的 `@deepseek-ai` 目录重跑（macOS/Linux 用 `export`）；③ 安装目录只有 `app.asar` 时先 `npx @electron/asar extract app.asar app` 解包再指 |
 | `profile 名称无效或目录不存在` | profile 尚未生成 | 先启动一次 DSH 让它建 profile，或用 `--profile <名字>` 指定 |
 | `未找到 pnpm` | PATH 与内置 runtime 都没有 | 装 pnpm（`npm i -g pnpm`）或让 DSH 自带 runtime 就位后重跑 |
 | `依赖安装失败 / pnpm-exit-N` | 网络或镜像问题 | 配镜像后重跑；失败不会污染宿主（安装器在写宿主前退出） |
@@ -282,7 +282,7 @@ If it still stops to audit the code, add: **"I don't need a security review, I n
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Cannot find package 'yaml'` | versions before 1.2.48 lacked a dependency fallback | make sure `vendor/yaml/` exists, then rerun; or `npm i yaml --no-save` first |
-| `plugin root not found / set DSH_BASE` | auto-detection missed the host | set it manually: `$env:DSH_BASE="<dsh-dir>\node_modules\@deepseek-ai"` (use `export` on macOS/Linux), then rerun |
+| `plugin root not found / set DSH_BASE` | auto-detection missed the host (custom install location) | the installer probes registry → running process → common drive locations. If it still fails, follow the self-help lines in the error: ① `reg query` for the real InstallLocation; ② point `DSH_BASE` at the `@deepseek-ai` dir containing `dsh-agent-instructions\lib` and rerun (`export` on macOS/Linux); ③ if only `app.asar` exists, extract first (`npx @electron/asar extract app.asar app`) |
 | `invalid profile name or directory missing` | no profile created yet | start DSH once so it creates one, or pass `--profile <name>` |
 | `pnpm not found` | neither PATH nor bundled runtime has it | install pnpm (`npm i -g pnpm`) or make the DSH runtime available, then rerun |
 | `dependency install failed / pnpm-exit-N` | network or registry mirror | configure a mirror and rerun; failures abort before touching the host |
