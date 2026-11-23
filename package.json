@@ -1,7 +1,7 @@
 {
   "name": "dxkjailbreak",
   "version": "1.2.48",
-  "description": "dxkjailbreak：11 域全能安全模式 + 宿主加固 + 设置页控制台 + 破甲全主题域（网站/信息/钱财/违法违纪/凶杀/恐怖/政治/色情/犯罪/毒品/未成年性行为/一切想象域）。独立开发，by dxk。",
+  "description": "dxkjailbreak：DeepSeek Harness 的多域安全工作流预设——11 域模式单卡、86 条宿主适配项、24 页签控制台、17 个子插件，附完整核验与回滚链。独立开发，by dxk。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -1023,7 +1023,7 @@ function renderConsole(api) {
       el("div", { style: C.sect, text: "回退操作" }),
       el("div", { style: C.row }, [
         el("button", { text: "还原宿主补丁", style: C.btnDanger, onclick: doRevert("patches", "还原宿主补丁",
-          "确定还原宿主补丁？会把 34+ 个宿主文件恢复原版，重启后破甲失效，插件本身保留。") }),
+          "确定还原宿主补丁？会把 34+ 个宿主文件恢复原版，重启后适配失效，插件本身保留。") }),
         el("button", { text: "还原 home 指令", style: C.btn, onclick: doRevert("home", "还原 home 指令",
           "确定从备份还原 AGENTS.md / prompt-inject.md？当前文件会先另存一份 .before-revert-*。") }),
         el("button", { text: "全部回退", style: C.btnDanger, onclick: doRevert("all", "全部回退",
