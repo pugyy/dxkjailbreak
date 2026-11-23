@@ -9,7 +9,7 @@
 
 const PLUGIN_ID = "dxkjailbreak";
 const SECTION_TITLE = "dxkjailbreak";
-const FALLBACK_VERSION = "1.3.0";
+const FALLBACK_VERSION = "1.3.1";
 
 async function callApi(api, method, args) {
   try {
@@ -475,6 +475,32 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
   return el("div", {
     style: "grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0",
   }, [button, status]);
+}
+
+async function callConversations(action, payload = {}) {
+  try {
+    const readOnly = action === "list" || payload.dryRun === true;
+    const response = await fetch("/dxkjailbreak/conversations", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, payload }),
+      signal: readOnly && typeof AbortSignal !== "undefined" ? AbortSignal.timeout?.(20000) : undefined,
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, error: result?.error || "HTTP " + response.status, refresh: result?.refresh === true };
+    if (!result || typeof result.ok !== "boolean") return { ok: false, error: "会话服务返回了无效响应。" };
+    if (action === "delete" && payload.dryRun === false && result.ok
+        && (result.dryRun === true || result.moved?.sessionId !== payload.sessionId)) {
+      return { ok: false, error: "宿主未确认这条会话已移入回收站。", refresh: true };
+    }
+    return result;
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.name === "TimeoutError" ? "会话请求超时，请重试。" : String(error?.message || error),
+    };
+  }
 }
 
 function renderReleaseHistory(api, version, panelId) {
@@ -1431,28 +1457,6 @@ function renderConsole(api) {
   //   ② 实际是「移到回收站」，不是 rm -rf —— 随时能恢复
   //   ③ 当前正在用的会话后端会拒删
 
-  /** 会话管理走独立路由（console RPC 白名单是加载时快照，新增方法会 unknown）。 */
-  const convCall = async (action, payload = {}) => {
-    try {
-      const readOnly = action === "list" || payload.dryRun === true;
-      const response = await fetch("/dxkjailbreak/conversations", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, payload }),
-        signal: readOnly && typeof AbortSignal !== "undefined" ? AbortSignal.timeout?.(20000) : undefined,
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok) return { ok: false, error: result?.error || "HTTP " + response.status };
-      if (!result || typeof result.ok !== "boolean") return { ok: false, error: "会话服务返回了无效响应。" };
-      return result;
-    } catch (error) {
-      return {
-        ok: false,
-        error: error?.name === "TimeoutError" ? "会话请求超时，请重试。" : String(error?.message || error),
-      };
-    }
-  };
   const paneConversations = () => {
     let rows = [];
     let disposed = false;
@@ -1505,9 +1509,10 @@ function renderConsole(api) {
       panel.appendChild(btns);
       mask.appendChild(panel);
       const onKey = (event) => {
-        if (event.key === "Escape") { event.preventDefault(); finish(false); return; }
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(false); return; }
         if (event.key === "Tab") {
           event.preventDefault();
+          event.stopPropagation();
           (document.activeElement === cancel ? okBtn : cancel).focus();
         }
       };
@@ -1515,12 +1520,12 @@ function renderConsole(api) {
         if (!closeConfirmation.cancel) return;
         closeConfirmation.cancel = null;
         mask.remove();
-        document.removeEventListener("keydown", onKey);
-        previousFocus?.focus();
+        document.removeEventListener("keydown", onKey, true);
+        if (previousFocus?.isConnected) previousFocus.focus();
         resolve(accepted);
       };
       closeConfirmation.cancel = () => finish(false);
-      document.addEventListener("keydown", onKey);
+      document.addEventListener("keydown", onKey, true);
       document.body.appendChild(mask);
       cancel.focus();
     });
@@ -1530,12 +1535,12 @@ function renderConsole(api) {
       deleting.add(row.sessionId);
       try {
         await withBusy(async () => {
-          const preview = await convCall("delete", { sessionId: row.sessionId, dryRun: true });
+          const preview = await callConversations("delete", { sessionId: row.sessionId, dryRun: true });
           if (!preview.ok) {
             if (!disposed) showError("不能删除：" + preview.error);
             return;
           }
-          const result = await convCall("delete", {
+          const result = await callConversations("delete", {
             sessionId: row.sessionId,
             confirmSessionId: row.sessionId,
             dryRun: false,
@@ -1585,26 +1590,28 @@ function renderConsole(api) {
       list.replaceChildren(table(
         ["会话 / 工作区", "更新时间", "大小", "操作"],
         visible,
-        (row) => [
-          el("td", { style: C.td }, [
-            el("span", { style: "font-family:ui-monospace,monospace;font-size:11px", title: row.sessionId },
-              row.sessionId.length > 24 ? row.sessionId.slice(0, 24) + "…" : row.sessionId),
-            el("span", { className: "dxk-session-workspace", text: row.workspace || "未分组" }),
-          ]),
-          el("td", { style: C.td }, updatedAt(row)),
-          el("td", { style: C.td, text: row.sizeText || "—" }),
-          el("td", { style: C.td }, [
-            el("button", { text: "删除", style: C.btnDanger, disabled: deleting.has(row.sessionId),
-              "aria-label": "删除会话 " + row.sessionId, onclick: () => deleteRow(row) }),
-          ]),
-        ],
+        (row) => {
+          const deleteButton = el("button", { type: "button", text: "删除", style: C.btnDanger,
+            disabled: deleting.has(row.sessionId), "aria-label": "删除会话 " + row.sessionId });
+          deleteButton.addEventListener("click", () => { void deleteRow(row); });
+          return [
+            el("td", { style: C.td }, [
+              el("span", { style: "font-family:ui-monospace,monospace;font-size:11px", title: row.sessionId },
+                row.sessionId.length > 24 ? row.sessionId.slice(0, 24) + "…" : row.sessionId),
+              el("span", { className: "dxk-session-workspace", text: row.workspace || "未分组" }),
+            ]),
+            el("td", { style: C.td }, updatedAt(row)),
+            el("td", { style: C.td, text: row.sizeText || "—" }),
+            el("td", { style: C.td }, [deleteButton]),
+          ];
+        },
       ));
     };
     search.addEventListener("input", drawRows);
 
     const load = () => withBusy(async () => {
       const request = ++listRequest;
-      const result = await convCall("list");
+      const result = await callConversations("list");
       if (disposed || request !== listRequest) return;
       if (!result.ok || !Array.isArray(result.sessions)) {
         message.textContent = "读取会话失败。 " + (result.error || "会话列表格式无效。");
@@ -1622,7 +1629,7 @@ function renderConsole(api) {
       el("div", { className: "dxk-session-actions" }, [
         el("button", { text: "刷新列表", style: C.btn, onclick: load }),
         el("button", { text: "检查未分组会话", style: C.btn, onclick: () => withBusy(async () => {
-          const result = await convCall("cleanup", { dryRun: true });
+          const result = await callConversations("cleanup", { dryRun: true });
           if (disposed) return;
           if (!result.ok) showError("检查失败：" + result.error);
           else {

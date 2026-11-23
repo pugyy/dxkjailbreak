@@ -40,7 +40,7 @@ const methods = [];
 // preset 请求拿不到 presets 时，前端 r.presets.find 抛 TypeError，
 //  而测试先打印 7 passed 再崩，报表误导）。
 const MOCK_BY_METHOD = {
-  releaseHistory: { ok: true, versions: [{ version: "1.3.0", notes: "" }, { version: "1.2.48", notes: "" }] },
+  releaseHistory: { ok: true, versions: [{ version: "1.3.1", notes: "" }, { version: "1.3.0", notes: "" }] },
   checkPluginUpdate: { ok: true, state: "available", latestTag: "v1.4", releaseUrl: "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" },
   status: { ok: true, version: "fixture", selfcheck: { ok: true } },
   preset: { ok: true, presets: [{ id: "dxkjailbreak", title: "fixture", isDefault: true, isSingleCard: true }], singleCard: "dxkjailbreak", singleCardPresent: true, default: "dxkjailbreak" },
@@ -120,8 +120,8 @@ ok("点击版本号打开更新记录", historyDialog?.open === true &&
   methods.filter(method => method === "releaseHistory").length === 1);
 const historyRows = historyDialog?.children[2].children || [];
 ok("最新版本排首位并展开，上一版保持折叠",
-  historyRows[0]?.open === "" && historyRows[0].children[0].textContent === "v1.3.0" &&
-  historyRows[1]?.open === undefined && historyRows[1]?.children[0].textContent === "v1.2.48");
+  historyRows[0]?.open === "" && historyRows[0].children[0].textContent === "v1.3.1" &&
+  historyRows[1]?.open === undefined && historyRows[1]?.children[0].textContent === "v1.3.0");
 ok("更新说明正文留空", historyRows.length > 0 && historyRows.every(row => row.children[1].textContent === ""));
 if (historyDialog) await historyDialog.children[0].children[1].listeners.click();
 ok("关闭按钮收起更新记录", historyDialog?.open === false);
@@ -148,7 +148,7 @@ if (hqUpdate) {
 ok("独立团指挥部显示更新检查失败，可继续重试",
   hqUpdate?.children[1].textContent.includes("连接超时") && !hqUpdate?.children[0].disabled);
 if (hqUpdate) {
-  MOCK_BY_METHOD.checkPluginUpdate = { ok: true, state: "current", latestTag: "v1.3.0" };
+  MOCK_BY_METHOD.checkPluginUpdate = { ok: true, state: "current", latestTag: "v1.3.1" };
   await hqUpdate.children[0].listeners.click();
 }
 ok("独立团指挥部重试后显示最新版", hqUpdate?.children[1].textContent.includes("已是最新版"));

@@ -145,6 +145,46 @@ test("a targeted session lookup skips unrelated logs and reports unavailable sto
   fail = true;
   assert.throws(() => listSessionDirs(), /Unavailable/);
 });
+
+test("unassigned-session diagnostics preserve archived rows and skip log metadata", async () => {
+  const source = fs.readFileSync(new URL("../lib/console-api.js", import.meta.url), "utf8");
+  const start = source.indexOf('if (action === "cleanup") {');
+  const end = source.indexOf('if (action === "restore") {', start);
+  assert.ok(start > 0 && end > start);
+  const registered = "session-listed";
+  const archived = "session-recycled";
+  const missing = "session-missing";
+  const orphan = "session-unassigned";
+  let missingFile = false;
+  let scans = 0;
+  const run = vm.runInNewContext("(async (action, payload) => {" + source.slice(start, end) + "})", {
+    safe: fn => fn(),
+    core: { findDshHome: () => "/fixture" },
+    path: path.posix,
+    fs: { readFileSync(file) {
+      assert.equal(file, "/fixture/storages/workspace.json");
+      if (missingFile) throw Object.assign(new Error("Missing"), { code: "ENOENT" });
+      return JSON.stringify({
+        global: { archivedSessionIds: [archived] },
+        tables: { workspaces: { fixture: { sessionIds: [registered, missing, archived] } } },
+      });
+    } },
+    listSessionDirs(targetId, options) {
+      scans++;
+      assert.equal(targetId, "");
+      assert.equal(options.includeMetadata, false);
+      return [registered, orphan].map(sessionId => ({ sessionId }));
+    },
+  });
+  const result = await run("cleanup", { dryRun: true });
+  assert.deepEqual(Array.from(result.orphans), [missing]);
+  assert.deepEqual(Array.from(result.unregistered), [orphan]);
+  assert.equal((await run("cleanup", { dryRun: false })).ok, false);
+  missingFile = true;
+  assert.equal((await run("cleanup", { dryRun: true })).ok, false);
+  assert.equal(scans, 1);
+});
+
 test("the delete API broadcasts removal only after a successful recycle", async () => {
   const source = fs.readFileSync(new URL("../lib/console-api.js", import.meta.url), "utf8");
   const entry = source.indexOf("export async function conversations(");
@@ -180,6 +220,7 @@ test("the delete API broadcasts removal only after a successful recycle", async 
 test("the sidebar confirmation binds the clicked ID and cancel sends nothing", async () => {
   let descriptor;
   const requests = [];
+  let reply;
   const sidebarMutations = [];
   const id = "session-00000000-0000-0000-0000-000000000000";
   const other = "session-00000000-0000-0000-0000-000000000001";
@@ -205,7 +246,7 @@ test("the sidebar confirmation binds the clicked ID and cancel sends nothing", a
     document, setTimeout: () => 0,
     fetch: async (url, options) => {
       requests.push([url, JSON.parse(options.body)]);
-      return { json: async () => ({ ok: true, moved: { sessionId: id } }) };
+      return reply || { ok: true, status: 200, json: async () => ({ ok: true, moved: { sessionId: id } }) };
     },
   };
   const client = fs.readFileSync(new URL("../client.js", import.meta.url), "utf8");
@@ -214,12 +255,25 @@ test("the sidebar confirmation binds the clicked ID and cancel sends nothing", a
   descriptor.factory(() => ({}));
   sandbox.setHostSessions(sessions);
   sandbox.confirmDelete(id);
+  sandbox.confirmDelete(other);
+  assert.equal(document.body.children.length, 1);
   assert.deepEqual(requests, []);
   const controls = () => document.body.children[0].children[0].children[3].children;
   controls()[0].onclick();
   assert.deepEqual(requests, []);
   sandbox.confirmDelete(id);
   const confirm = controls()[1];
+  for (const [status, sessionId] of [[500, id], [200, other]]) {
+    reply = { ok: status === 200, status, json: async () => ({ ok: true, moved: { sessionId } }) };
+    confirm.onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(catalog, [id, other]);
+    assert.deepEqual(sidebarMutations, []);
+    assert.equal(confirm.disabled, false);
+    assert.equal(confirm.textContent, "重试删除");
+  }
+  reply = undefined;
+  requests.length = 0;
   confirm.onclick();
   confirm.onclick();
   assert.deepEqual(requests, [["/dxkjailbreak/conversations", {
