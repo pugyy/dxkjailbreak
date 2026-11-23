@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import vm from "node:vm";
 import { test } from "node:test";
 import { archiveAndRecycle } from "../lib/conversation-recycle.js";
@@ -109,6 +110,40 @@ test("the conversations route dispatches GET only for listing", async () => {
   assert.deepEqual(calls, ["list"]);
   assert.equal(await request("POST", url, JSON.stringify({ action: "delete" })), 200);
   assert.deepEqual(calls, ["list", "delete"]);
+});
+
+test("a targeted session lookup skips unrelated logs and reports unavailable storage", () => {
+  const source = fs.readFileSync(new URL("../lib/console-api.js", import.meta.url), "utf8");
+  const start = source.indexOf("function readSessionEntries(");
+  const end = source.indexOf("async function sendToRecycleBin", start);
+  assert.ok(start >= 0 && end > start);
+  const sessionId = "session-00000000-0000-0000-0000-000000000000";
+  const target = "/sessions/workspace/" + sessionId;
+  const opened = [];
+  const dir = name => ({ name, isDirectory: () => true });
+  let fail = false;
+  const { listSessionDirs } = vm.runInNewContext(source.slice(start, end) + "\n({ listSessionDirs })", {
+    sessionsRoot: () => "/sessions",
+    path: path.posix,
+    fs: {
+      readdirSync(dirPath) {
+        opened.push(dirPath);
+        if (fail) throw Object.assign(new Error("Unavailable"), { code: "EACCES" });
+        if (dirPath === "/sessions") return [dir("workspace")];
+        if (dirPath === target) return [{ name: "log.jsonl" }];
+        assert.fail("Unexpected directory read " + dirPath);
+      },
+      lstatSync(file) {
+        if (file === target) return { isDirectory: () => true };
+        assert.equal(file, target + "/log.jsonl");
+        return { size: 40, mtimeMs: 1, isSymbolicLink: () => false };
+      },
+    },
+  });
+  assert.equal(listSessionDirs(sessionId)[0]?.size, 40);
+  assert.deepEqual(opened, ["/sessions", target]);
+  fail = true;
+  assert.throws(() => listSessionDirs(), /Unavailable/);
 });
 test("the delete API broadcasts removal only after a successful recycle", async () => {
   const source = fs.readFileSync(new URL("../lib/console-api.js", import.meta.url), "utf8");
