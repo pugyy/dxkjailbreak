@@ -38,7 +38,8 @@
     "vendor",
     "install.cmd",
     "install.sh",
-    "setup.cmd"
+    "setup.cmd",
+    "SECURITY.md"
   ],
   "dsh": {
     "bundle": {
