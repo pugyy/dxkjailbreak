@@ -1,0 +1,43 @@
+name: Feature request
+description: 提一个功能建议或改进方向
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决什么问题
+      description: 现在哪里不顺手，或缺什么能力
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的做法
+      description: 你希望它怎么工作
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及区域
+      options:
+        - 设置页 / 控制台
+        - 安装器
+        - 宿主适配
+        - 子插件
+        - 文档
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: alt
+    attributes:
+      label: 考虑过的替代方案
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我搜过已有 issue，没有重复
+          required: true

@@ -10,7 +10,10 @@
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-%E2%89%A50.2.1--rc.2-orange?style=flat-square)](package.json)
 [![Tests](https://img.shields.io/badge/tests-600%2B%20assertions-brightgreen?style=flat-square)](test/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](package.json)
-[![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](docs/home/dxkjailbreak-functions.md)
+<br>
+[![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](#特性一览)
+[![Plugin](https://img.shields.io/badge/sub--plugins-17-9cf?style=flat-square)](#子插件17)
+[![Release](https://img.shields.io/badge/release-v1.2.48-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.2.48)
 
 **[中文](#中文) · [English](#english)**
 
@@ -57,7 +60,8 @@ node install.mjs          # 安装并初始化
 
 脚本自动完成四件事：检查 Node.js 版本 → 执行安装 → 显示结果（成功/退出码）→ 暂停窗口让你看输出。出问题就把窗口里的文字整段复制给开发者。
 
-### 🤖 让 AI 帮你执行（执行式指令）
+<details>
+<summary><b>🤖 让 AI 帮你执行（执行式指令，点开）</b></summary>
 
 不需要让 AI「评估这个项目」——只需让它跑一条命令。分成两步发，成功率最高：
 
@@ -89,7 +93,10 @@ D:\下载\dxkjailbreak-1.2.48.zip
 
 > 完全不想经 AI：见上一节「双击安装」。
 
-### 🔧 常见问题排查
+</details>
+
+<details>
+<summary><b>🔧 常见问题排查（点开）</b></summary>
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
@@ -102,6 +109,8 @@ D:\下载\dxkjailbreak-1.2.48.zip
 | 装完设置页没有 dxkjailbreak | 未重启或 bundles 未加载 | 完全退出并重开 DSH；仍有问题看设置页「编成」页签的子插件登记 |
 | 想退回安装前 | — | `node install.mjs --uninstall`（还原宿主与 home 指令，插件目录保留） |
 | Windows 报权限/占用 | 文件被占用或权限不足 | 关闭 DSH 后重跑；必要时以管理员运行 |
+
+</details>
 
 ### 特性一览
 
@@ -293,7 +302,8 @@ Prefer to skip the assistant entirely? Two ways, no command line required:
 
 The script checks your Node.js version, runs the installer, prints the result (success or exit code), and keeps the window open so you can read it. If something fails, copy the whole window text to the developer.
 
-### 🤖 Have an AI run it (execution-style prompt)
+<details>
+<summary><b>🤖 Have an AI run it (execution-style prompt, click to open)</b></summary>
 
 Don't ask an assistant to *evaluate* the project — ask it to run one command. Two messages works best:
 
@@ -325,7 +335,10 @@ If it still stops to audit the code, add: **"I don't need a security review, I n
 
 > Want to skip AI entirely: see "double-click install" above.
 
-### 🔧 Troubleshooting
+</details>
+
+<details>
+<summary><b>🔧 Troubleshooting (click to open)</b></summary>
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -338,6 +351,8 @@ If it still stops to audit the code, add: **"I don't need a security review, I n
 | No dxkjailbreak section after install | DSH not restarted, or bundles not loaded | fully quit and reopen DSH; check the sub-plugin registry on the "plugins" tab |
 | Want to roll back | — | `node install.mjs --uninstall` (restores host and home files, keeps the plugin directory) |
 | Windows permission / file-in-use errors | locked files or insufficient rights | close DSH and rerun; run as administrator if needed |
+
+</details>
 
 ### Features
 
