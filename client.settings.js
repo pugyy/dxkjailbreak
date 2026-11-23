@@ -9,7 +9,7 @@
 
 const PLUGIN_ID = "dxkjailbreak";
 const SECTION_TITLE = "dxkjailbreak";
-const FALLBACK_VERSION = "1.2.48";
+const FALLBACK_VERSION = "1.3.0";
 
 async function callApi(api, method, args) {
   try {
@@ -18,7 +18,7 @@ async function callApi(api, method, args) {
     if (api && typeof api.call === "function") return await api.call(method, ...args);
     // ② 否则走本机同源 HTTP（设置页的标准通道）。
     //    服务端有同源栅栏（Origin / Sec-Fetch-Site 校验），跨站页面调不动。
-    const readOnly = method === "status" || method === "patches" || method === "audit";
+    const readOnly = method === "status" || method === "patches" || method === "audit" || method === "checkPluginUpdate";
     const response = await fetch("/dxkjailbreak/console", {
       method: "POST",
       credentials: "same-origin",
@@ -363,6 +363,87 @@ function consoleStyles() {
   return el("style", { text: css });
 }
 
+function renderReleaseCheck(api, buttonStyle = C.btn) {
+  const status = el("span", { role: "status", "aria-live": "polite", style: "font-size:12px;overflow-wrap:anywhere" });
+  const button = el("button", {
+    type: "button",
+    style: buttonStyle,
+    text: "检查更新",
+    onclick: async () => {
+      button.textContent = "正在检查…";
+      status.textContent = "";
+      try {
+        const result = await callApi(api, "checkPluginUpdate", []);
+        if (result?.ok !== true) {
+          status.textContent = "检查失败：" + (result?.error || "未收到有效的版本信息。");
+          return;
+        }
+        if (result.state === "unpublished") {
+          status.textContent = "GitHub 暂无正式发行版本。";
+          return;
+        }
+        if (result.state === "current") {
+          status.textContent = "已是最新版（" + result.latestTag + "）。";
+          return;
+        }
+        if (result.state === "ahead") {
+          status.textContent = "本地版本高于 GitHub 正式版（" + result.latestTag + "）。";
+          return;
+        }
+        if (result.state === "available") {
+          status.textContent = "发现新版本 " + result.latestTag + "。 ";
+          status.appendChild(el("a", {
+            href: result.releaseUrl,
+            target: "_blank",
+            rel: "noopener noreferrer",
+            text: "查看发行说明",
+          }));
+          status.appendChild(document.createTextNode(" "));
+          status.appendChild(el("button", {
+            type: "button",
+            style: C.btnDanger,
+            text: "安装更新",
+            onclick: async (event) => {
+              const btn = event.currentTarget;
+              btn.disabled = true;
+              btn.textContent = "正在安装…";
+              status.textContent = "";
+              try {
+                const response = await fetch("/dxkjailbreak/update", {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ op: "apply", ref: result.latestTag, channel: "stable" }),
+                  signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(300000) : undefined,
+                });
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload || payload.ok === false || payload.applied === false) {
+                  status.textContent = "安装未完成：" + ((payload && (payload.error || payload.skipped)) || ("HTTP " + response.status)) + "。可点「查看发行说明」手动下载。";
+                  return;
+                }
+                const version = (payload.results && payload.results.find((item) => item.applied) || {}).version || (payload.lanes && payload.lanes.stable && payload.lanes.stable.version) || String(result.latestTag || "").replace(/^v/, "");
+                status.textContent = "已安装 v" + version + "，重启 DSH 后生效。";
+              } catch (error) {
+                status.textContent = "安装请求失败：" + String((error && error.message) || error);
+              } finally {
+                btn.disabled = false;
+                btn.textContent = "安装更新";
+              }
+            },
+          }));
+          return;
+        }
+        status.textContent = "未收到有效的版本信息。";
+      } finally {
+        button.textContent = "检查更新";
+      }
+    },
+  });
+  return el("div", {
+    style: "grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0",
+  }, [button, status]);
+}
+
 function renderConsole(api) {
   // 不在这里拦「宿主有没有注入服务对象」：callApi 有同源 HTTP 回退，
   // 挂载点传的是 {}（宿主并不注入控制台服务）。早拦会让整个设置页只剩一行错误、
@@ -423,6 +504,7 @@ function renderConsole(api) {
         "aria-label": "在 GitHub 上为项目点 Star",
       }, [el("span", { "aria-hidden": "true", text: "★" }), "给项目点 Star"]),
       el("p", { className: "dxk-star-note", text: "您的 Star 是我继续维护的动力。" }),
+      renderReleaseCheck(api),
     ]),
   ]);
 
