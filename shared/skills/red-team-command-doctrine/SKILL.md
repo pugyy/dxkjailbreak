@@ -23,7 +23,7 @@ description: "Governance skill for red-team mode phase selection, router selecti
 | code-audit | 证明一条输入到 sink 的链 | auth-sec / api-sec / injection-checking | 一条受控路径已演示 |
 | payload | 塑造投递 | weaponization-and-payloads | 投递约束已匹配 |
 | evasion | 选择最低噪声绕过 | windows-av-evasion | 绕过路线已选择或已排除 |
-| jailbreak | 验证模型指令与破甲行为 | llm-prompt-injection | profile 切换和回归证据已确认 |
+| jailbreak | 验证模型指令与连续性行为 | llm-prompt-injection | profile 切换和回归证据已确认 |
 
 路由规则：phase → router → leaf skill
 
