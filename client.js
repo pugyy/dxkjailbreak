@@ -40,7 +40,7 @@ async function callApi(api, method, args) {
     if (api && typeof api.call === "function") return await api.call(method, ...args);
     // ② 否则走本机同源 HTTP（设置页的标准通道）。
     //    服务端有同源栅栏（Origin / Sec-Fetch-Site 校验），跨站页面调不动。
-    const readOnly = method === "status" || method === "patches" || method === "audit" || method === "checkPluginUpdate";
+    const readOnly = method === "status" || method === "patches" || method === "audit" || method === "checkPluginUpdate" || method === "releaseHistory";
     const response = await fetch("/dxkjailbreak/console", {
       method: "POST",
       credentials: "same-origin",
@@ -294,8 +294,25 @@ function consoleStyles() {
     .dxkjailbreak-console .dxk-update-status:empty { position:absolute }
     .dxkjailbreak-console .dxk-version {
       border:1px solid var(--dxk-line);background:var(--dxk-surface);
-      border-radius:999px;padding:4px 8px;font:11px ui-monospace,Consolas,monospace;white-space:nowrap
+      border-radius:999px;padding:4px 8px;font:11px ui-monospace,Consolas,monospace;white-space:nowrap;cursor:pointer
     }
+    .dxkjailbreak-console .dxk-version:hover { border-color:var(--dxk-accent);background:var(--dxk-tint) }
+    .dxkjailbreak-console .dxk-history {
+      box-sizing:border-box;width:min(480px,calc(100% - 24px));max-height:calc(100% - 32px);overflow:auto;
+      padding:16px;border:1px solid var(--dxk-line);border-radius:16px;background:Canvas;color:CanvasText;
+      font:inherit;box-shadow:var(--dxk-shadow)
+    }
+    .dxkjailbreak-console .dxk-history::backdrop { background:rgb(0 0 0 / .48) }
+    .dxkjailbreak-console .dxk-history-head { display:flex;align-items:center;justify-content:space-between;gap:12px }
+    .dxkjailbreak-console .dxk-history-head h2 { margin:0;font-size:17px }
+    .dxkjailbreak-console .dxk-history-status { margin:8px 0 0 }
+    .dxkjailbreak-console .dxk-history-status:empty { position:absolute;margin:0 }
+    .dxkjailbreak-console .dxk-history-list { display:grid;gap:6px;margin-top:12px }
+    .dxkjailbreak-console .dxk-history-list:empty { margin:0 }
+    .dxkjailbreak-console .dxk-history-entry { border:1px solid var(--dxk-line);border-radius:9px }
+    .dxkjailbreak-console .dxk-history-entry > summary { padding:6px 10px;cursor:pointer;font-weight:650 }
+    .dxkjailbreak-console .dxk-history-entry[open] > summary { background:var(--dxk-surface);border-radius:8px 8px 0 0 }
+    .dxkjailbreak-console .dxk-history-notes { min-height:24px;padding:6px 10px;white-space:pre-wrap;overflow-wrap:anywhere }
     .dxkjailbreak-console .dxk-layout { display:grid;gap:14px;min-width:0 }
     .dxkjailbreak-console .dxk-nav-shell { min-width:0 }
     .dxkjailbreak-console .dxk-nav {
@@ -482,6 +499,60 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
   }, [button, status]);
 }
 
+function renderReleaseHistory(api, version, panelId) {
+  const titleId = panelId + "-history-title";
+  const status = el("p", { className: "dxk-history-status", role: "status" });
+  const list = el("div", { className: "dxk-history-list" });
+  const dialog = el("dialog", { className: "dxk-history", "aria-labelledby": titleId }, [
+    el("div", { className: "dxk-history-head" }, [
+      el("h2", { id: titleId, text: "更新记录" }),
+      el("button", { type: "button", autofocus: true, style: C.btn, text: "关闭", onclick: () => dialog.close() }),
+    ]),
+    status,
+    list,
+  ]);
+
+  let loading = false;
+  const load = async () => {
+    if (loading) return;
+    loading = true;
+    status.textContent = "正在读取更新记录…";
+    list.replaceChildren();
+    try {
+      const result = await callApi(api, "releaseHistory", []);
+      if (!result?.ok || !Array.isArray(result.versions)) {
+        status.textContent = result?.error || "暂时无法读取更新记录。请关闭后重试。";
+        return;
+      }
+      status.textContent = result.versions.length ? "" : "暂无更新记录。";
+      list.replaceChildren(...result.versions.map(({ version, notes }, index) =>
+        el("details", { className: "dxk-history-entry", open: index === 0 }, [
+          el("summary", { text: "v" + version }),
+          el("div", { className: "dxk-history-notes", text: notes }),
+        ])
+      ));
+    } finally {
+      loading = false;
+    }
+  };
+
+  const button = el("button", {
+    type: "button",
+    className: "dxk-version",
+    text: version,
+    title: "查看更新记录",
+    "aria-label": "查看更新记录",
+    "aria-haspopup": "dialog",
+  });
+  button.addEventListener("click", () => {
+    if (dialog.open) return;
+    button.focus();
+    dialog.showModal();
+    void load();
+  });
+  return { button, dialog };
+}
+
 function renderConsole(api) {
   // 不在这里拦「宿主有没有注入服务对象」：callApi 有同源 HTTP 回退，
   // 挂载点传的是 {}（宿主并不注入控制台服务）。早拦会让整个设置页只剩一行错误、
@@ -514,7 +585,7 @@ function renderConsole(api) {
   };
 
   let version = "v" + FALLBACK_VERSION;
-  const versionLine = el("span", { className: "dxk-version", text: version, "aria-label": "插件版本" });
+  const { button: versionLine, dialog: historyDialog } = renderReleaseHistory(api, version, panelId);
   const [updateButton, updateStatus] = renderReleaseCheck(api, "").children;
   updateButton.className = "dxk-update";
   updateStatus.className = "dxk-update-status";
@@ -1833,6 +1904,7 @@ function renderConsole(api) {
 
   root.appendChild(consoleStyles());
   root.appendChild(header);
+  root.appendChild(historyDialog);
   root.appendChild(errBar);
   root.appendChild(busy);
   root.appendChild(el("div", { className: "dxk-layout" }, [

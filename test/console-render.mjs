@@ -21,6 +21,7 @@ const mkNode = (tag) => {
     appendChild(c) { this.children.push(c); return c; },
     replaceChildren(...cs) { this.children = cs; },
     setAttribute(k, v) { if (k === "style") this.style.cssText = v; this[k] = v; },
+    showModal() { this.open = true; }, close() { this.open = false; },
     listeners: {}, addEventListener(name, listener) { this.listeners[name] = listener; }, focus() {}, querySelector() { return null; },
     querySelectorAll() { return []; },
   };
@@ -39,6 +40,7 @@ const methods = [];
 // preset 请求拿不到 presets 时，前端 r.presets.find 抛 TypeError，
 //  而测试先打印 7 passed 再崩，报表误导）。
 const MOCK_BY_METHOD = {
+  releaseHistory: { ok: true, versions: [{ version: "1.3.0", notes: "" }, { version: "1.2.48", notes: "" }] },
   checkPluginUpdate: { ok: true, state: "available", latestTag: "v1.4", releaseUrl: "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" },
   status: { ok: true, version: "fixture", selfcheck: { ok: true } },
   preset: { ok: true, presets: [{ id: "dxkjailbreak", title: "fixture", isDefault: true, isSingleCard: true }], singleCard: "dxkjailbreak", singleCardPresent: true, default: "dxkjailbreak" },
@@ -105,6 +107,24 @@ ok("三个分组按钮各自存在", ["军械整备", "作战沙盘", "附属"].
 ok("含有活动页签", descendants.some(n => n.role === "tab" && n["aria-selected"] === "true"));
 ok("挂载后只发一次 status", methods.filter(method => method === "status").length === 1);
 ok("页面显示响应中的版本", descendants.some(n => n.textContent?.includes("vfixture")));
+
+
+ok("进入页面不会加载更新记录", !methods.includes("releaseHistory"));
+const versionButton = descendants.find(n => n.tagName === "BUTTON" && n.className === "dxk-version");
+const historyDialog = descendants.find(n => n.tagName === "DIALOG" && n.className === "dxk-history");
+if (versionButton) {
+  await versionButton.listeners.click();
+  await new Promise(resolve => setImmediate(resolve));
+}
+ok("点击版本号打开更新记录", historyDialog?.open === true &&
+  methods.filter(method => method === "releaseHistory").length === 1);
+const historyRows = historyDialog?.children[2].children || [];
+ok("最新版本排首位并展开，上一版保持折叠",
+  historyRows[0]?.open === "" && historyRows[0].children[0].textContent === "v1.3.0" &&
+  historyRows[1]?.open === undefined && historyRows[1]?.children[0].textContent === "v1.2.48");
+ok("更新说明正文留空", historyRows.length > 0 && historyRows.every(row => row.children[1].textContent === ""));
+if (historyDialog) await historyDialog.children[0].children[1].listeners.click();
+ok("关闭按钮收起更新记录", historyDialog?.open === false);
 
 ok("进入页面不会自动检查更新", !methods.includes("checkPluginUpdate"));
 const updateButton = descendants.find(n => n.tagName === "BUTTON" && n.textContent === "检查更新");

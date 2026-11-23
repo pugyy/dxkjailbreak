@@ -225,6 +225,10 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 - 现在保留当前状态，等新历史到达后一次性替换；两个回退入口共用同一个进行中请求，连续点击只提交一次
 - 回退期间保留已输入的草稿，不再丢失
 
+**更新记录**
+- 点击页头的版本号即可打开「更新记录」：11 个版本从新到旧排列，当前版本默认展开
+- 每条记录写明该版实际改了什么（在线更新链路、回退竞态、页头布局等），正文随包分发
+
 **设置页页头紧凑化**
 - 版本号紧跟 `dxkjailbreak` 名称；「检查更新」移到原版本号位置，与「★ 给项目点 Star」等宽等高
 - Star 提示语与项目主页链接同一行，窄屏下自然换行；页头高度约 139px → 79px
@@ -485,6 +489,10 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 - Fixed a race in in-place rewind: the old code cleared session state before asynchronously loading history, so the model picker could stick in a loading state and the input box became unusable
 - State is now kept until the new history arrives and replaced in one pass; both rewind entry points share a single in-flight request, so repeated clicks submit once
 - A draft typed before rewinding is preserved instead of being dropped
+
+**Release history**
+- Click the version number in the header to open "Release history": 11 versions newest-first, the current one expanded by default
+- Each entry records what actually changed (update pipeline, rewind race, header layout and so on); the notes ship with the package
 
 **Compact settings header**
 - The version now sits right after the `dxkjailbreak` name; "Check for updates" moved into the old version slot, matched in width and height with "★ Star this project"
