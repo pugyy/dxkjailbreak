@@ -6,14 +6,14 @@
 **一个插件，11 域安全工作流，一个控制台。**
 
 [![License](https://img.shields.io/github/license/pugyy/dxkjailbreak?color=blue&style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-green?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.1-green?style=flat-square)](CHANGELOG.md)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-%E2%89%A50.2.1--rc.2-orange?style=flat-square)](package.json)
 [![Tests](https://img.shields.io/badge/tests-600%2B%20assertions-brightgreen?style=flat-square)](test/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](package.json)
 <br>
 [![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](#特性一览)
 [![Plugin](https://img.shields.io/badge/sub--plugins-17-9cf?style=flat-square)](#子插件17)
-[![Release](https://img.shields.io/badge/release-v1.3.0-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.0)
+[![Release](https://img.shields.io/badge/release-v1.3.1-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.1)
 [![Release](https://img.shields.io/github/v/release/pugyy/dxkjailbreak?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/latest)
 
 **[中文](#中文) · [English](#english)**
@@ -210,7 +210,22 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
-#### 🚀 v1.3.0 — 在线更新与体验修复（当前版本）
+#### 🔧 v1.3.1 — 删除与检查的可靠性（当前版本）
+
+**对话删除更可靠**
+- 设置页与侧栏统一校验宿主的返回结果，只有会话确实移入回收站才提示成功
+- 失败会说明具体原因，不会出现提示成功但文件仍在的情况
+- 侧栏处理了重复弹窗与键盘操作：确认框可用键盘完成，取消后焦点回到原按钮
+
+**未分组会话检查更准确**
+- 保留回收站还原所需的归档登记，可还原的会话不再被误报为残留
+- 诊断扫描更轻量；工作区登记缺失时直接说明
+
+**设置页与更新记录**
+- 两个设置入口与 24 个页签在正常、空数据、服务异常三种状态下均已验证
+- 版本号显示 v1.3.1，更新记录自动置顶本版
+
+#### 🚀 v1.3.0 — 在线更新与体验修复
 
 **一键在线更新**
 - 设置页与独立团指挥部均提供「检查更新」：查询 GitHub 正式发行版，发现新版显示版本号与「查看发行说明」
@@ -475,7 +490,22 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
-#### 🚀 v1.3.0 — online update and experience fixes (current)
+#### 🔧 v1.3.1 — reliable deletion and auditing (current)
+
+**More reliable conversation deletion**
+- The settings page and the sidebar share one validation of the host's response: success is reported only after the session really landed in the recycle bin
+- Failures state the reason explicitly — no more "success" while the files are still there
+- The sidebar handles duplicate dialogs and keyboard use: the confirmation can be completed by keyboard, and focus returns to the original button on cancel
+
+**More accurate ungrouped-session audit**
+- Archive records needed for recycle-bin restore are kept, so restorable sessions are no longer reported as leftovers
+- The audit scans more lightly and says so explicitly when the workspace record is missing
+
+**Settings page and release history**
+- Both settings entry points and all 24 tabs were verified under normal, empty and service-error states
+- The version shows v1.3.1 and the release history pins this version to the top
+
+#### 🚀 v1.3.0 — online update and experience fixes
 
 **One-click online update**
 - Both the settings page and the command post expose "Check for updates": queries GitHub releases and shows the new version with a link to the release notes
