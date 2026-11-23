@@ -6,14 +6,15 @@
 **一个插件，11 域安全工作流，一个控制台。**
 
 [![License](https://img.shields.io/github/license/pugyy/dxkjailbreak?color=blue&style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.48-green?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-green?style=flat-square)](CHANGELOG.md)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-%E2%89%A50.2.1--rc.2-orange?style=flat-square)](package.json)
 [![Tests](https://img.shields.io/badge/tests-600%2B%20assertions-brightgreen?style=flat-square)](test/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](package.json)
 <br>
 [![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](#特性一览)
 [![Plugin](https://img.shields.io/badge/sub--plugins-17-9cf?style=flat-square)](#子插件17)
-[![Release](https://img.shields.io/badge/release-v1.2.48-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.2.48)
+[![Release](https://img.shields.io/badge/release-v1.3.0-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.0)
+[![Release](https://img.shields.io/github/v/release/pugyy/dxkjailbreak?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/latest)
 
 **[中文](#中文) · [English](#english)**
 
@@ -68,7 +69,7 @@ node install.mjs          # 安装并初始化
 **第 1 步（纯文件操作，零判断）**
 ```text
 把这个 zip 解压到 D:\dxkjailbreak：
-D:\下载\dxkjailbreak-1.2.48.zip
+D:\下载\dxkjailbreak-1.3.0.zip
 ```
 
 **第 2 步（执行，不审查）**
@@ -207,9 +208,18 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 ### 版本历程
 
-> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。
+> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
-#### 🏁 v1.2.48 — 首个正式版（当前版本）
+#### 🚀 v1.3.0 — 在线更新（当前版本）
+
+**一键在线更新**
+- 设置页与独立团指挥部均提供「检查更新」：查询 GitHub 正式发行版，发现新版显示版本号与「查看发行说明」
+- 新增「安装更新」：点击后自动下载 → SHA256 校验 → 备份快照 → 安装 → 版本验证 → 失败自动回滚，无需手动操作
+- 更新源直连 GitHub Releases（`dxkjailbreak-X.Y.Z.tgz` + `SHA256SUMS.txt`），不依赖 npm registry
+- 连点保护、网络失败可重试、安装完成提示重启 DSH 生效
+- 更新器配置对齐真实仓库（`pugyy/dxkjailbreak`），发行源开关开启
+
+#### 🏁 v1.2.48 — 首个正式版
 
 **设置页与会话管理**
 - 会话列表：刷新失败保留上一次成功结果并显式报错，过期响应自动丢弃——列表不再因一次抖动变空
@@ -310,7 +320,7 @@ Don't ask an assistant to *evaluate* the project — ask it to run one command. 
 **Step 1 (pure file operation, no judgement)**
 ```text
 Unzip this into D:\dxkjailbreak:
-D:\Downloads\dxkjailbreak-1.2.48.zip
+D:\Downloads\dxkjailbreak-1.3.0.zip
 ```
 
 **Step 2 (execute, don't audit)**
@@ -449,9 +459,18 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 
 ### Release history
 
-> From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases.
+> From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
-#### 🏁 v1.2.48 — first stable release (current)
+#### 🚀 v1.3.0 — online update (current)
+
+**One-click online update**
+- Both the settings page and the command post expose "Check for updates": queries GitHub releases and shows the new version with a link to the release notes
+- New "Install update": downloads → verifies SHA256 → snapshots → installs → verifies version → auto-rolls back on failure, no manual steps
+- Update source goes straight to GitHub Releases (`dxkjailbreak-X.Y.Z.tgz` + `SHA256SUMS.txt`), no npm registry dependency
+- Double-click protection, retry on network failure, restart-DSH prompt on completion
+- Updater configuration aligned to the real repository (`pugyy/dxkjailbreak`), release source enabled
+
+#### 🏁 v1.2.48 — first stable release
 
 **Console & conversation management**
 - Session list: a failed refresh keeps the last good result and surfaces the error; stale responses are discarded — no more blanking out on a hiccup
