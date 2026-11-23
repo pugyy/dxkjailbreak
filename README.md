@@ -210,7 +210,7 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
-#### 🚀 v1.3.0 — 在线更新（当前版本）
+#### 🚀 v1.3.0 — 在线更新与体验修复（当前版本）
 
 **一键在线更新**
 - 设置页与独立团指挥部均提供「检查更新」：查询 GitHub 正式发行版，发现新版显示版本号与「查看发行说明」
@@ -218,6 +218,16 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 - 更新源直连 GitHub Releases（`dxkjailbreak-X.Y.Z.tgz` + `SHA256SUMS.txt`），不依赖 npm registry
 - 连点保护、网络失败可重试、安装完成提示重启 DSH 生效
 - 更新器配置对齐真实仓库（`pugyy/dxkjailbreak`），发行源开关开启
+- 下载请求禁用 CDN 旧缓存：同名资产重传后也能拿到当前发行包的字节（避免缓存导致校验不一致）
+
+**会话回退：输入框卡死修复**
+- 修复原地回退的竞态：旧实现先清空当前会话状态再异步加载历史，空窗期内模型选择器可能卡在加载态、输入框无法输入
+- 现在保留当前状态，等新历史到达后一次性替换；两个回退入口共用同一个进行中请求，连续点击只提交一次
+- 回退期间保留已输入的草稿，不再丢失
+
+**设置页页头紧凑化**
+- 版本号紧跟 `dxkjailbreak` 名称；「检查更新」移到原版本号位置，与「★ 给项目点 Star」等宽等高
+- Star 提示语与项目主页链接同一行，窄屏下自然换行；页头高度约 139px → 79px
 
 #### 🏁 v1.2.48 — 首个正式版
 
@@ -461,7 +471,7 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
-#### 🚀 v1.3.0 — online update (current)
+#### 🚀 v1.3.0 — online update and experience fixes (current)
 
 **One-click online update**
 - Both the settings page and the command post expose "Check for updates": queries GitHub releases and shows the new version with a link to the release notes
@@ -469,6 +479,16 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 - Update source goes straight to GitHub Releases (`dxkjailbreak-X.Y.Z.tgz` + `SHA256SUMS.txt`), no npm registry dependency
 - Double-click protection, retry on network failure, restart-DSH prompt on completion
 - Updater configuration aligned to the real repository (`pugyy/dxkjailbreak`), release source enabled
+- Download requests bypass stale CDN cache, so a re-uploaded asset yields the current bytes (no checksum mismatch)
+
+**Session rewind: input-box lockup fix**
+- Fixed a race in in-place rewind: the old code cleared session state before asynchronously loading history, so the model picker could stick in a loading state and the input box became unusable
+- State is now kept until the new history arrives and replaced in one pass; both rewind entry points share a single in-flight request, so repeated clicks submit once
+- A draft typed before rewinding is preserved instead of being dropped
+
+**Compact settings header**
+- The version now sits right after the `dxkjailbreak` name; "Check for updates" moved into the old version slot, matched in width and height with "★ Star this project"
+- The star prompt and the project link share one line and wrap naturally on narrow screens; header height drops from ~139px to ~79px
 
 #### 🏁 v1.2.48 — first stable release
 

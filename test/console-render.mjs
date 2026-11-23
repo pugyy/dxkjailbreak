@@ -21,7 +21,7 @@ const mkNode = (tag) => {
     appendChild(c) { this.children.push(c); return c; },
     replaceChildren(...cs) { this.children = cs; },
     setAttribute(k, v) { if (k === "style") this.style.cssText = v; this[k] = v; },
-    addEventListener() {}, focus() {}, querySelector() { return null; },
+    listeners: {}, addEventListener(name, listener) { this.listeners[name] = listener; }, focus() {}, querySelector() { return null; },
     querySelectorAll() { return []; },
   };
   Object.defineProperty(n, "textContent", {
@@ -39,6 +39,7 @@ const methods = [];
 // preset 请求拿不到 presets 时，前端 r.presets.find 抛 TypeError，
 //  而测试先打印 7 passed 再崩，报表误导）。
 const MOCK_BY_METHOD = {
+  checkPluginUpdate: { ok: true, state: "available", latestTag: "v1.4", releaseUrl: "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" },
   status: { ok: true, version: "fixture", selfcheck: { ok: true } },
   preset: { ok: true, presets: [{ id: "dxkjailbreak", title: "fixture", isDefault: true, isSingleCard: true }], singleCard: "dxkjailbreak", singleCardPresent: true, default: "dxkjailbreak" },
   patches: { ok: true, patches: [], summary: { total: 0, applied: 0, pending: 0, absent: 0, optional: 0 } },
@@ -70,15 +71,24 @@ globalThis.fetch = async (url, opts) => {
 let descriptor;
 window.__ModuleLoader__ = { load(value) { descriptor = value; } };
 new Function(src)();
-const react = { createElement: (type, props) => ({ type, props }) };
+const react = {
+  createElement: (type, props, children) => ({ type, props: { ...props, children } }),
+  useState: initial => [initial, () => {}],
+  useEffect: () => {},
+  useCallback: fn => fn,
+};
 const client = descriptor.factory(name => {
   if (name !== "react") throw new Error("非预期模块 " + name);
   return react;
 });
-let settingsView;
+let settingsView, hqView;
 client.apply({ slots: {
   inject: (_name, register) => register(),
-  register(spec, view) { if (spec.name === "settings.section") settingsView = view; return () => {}; },
+  register(spec, view) {
+    if (spec.name === "settings.section") settingsView = view;
+    if (spec.name === "conversation.view") hqView = view;
+    return () => {};
+  },
 } });
 ok("发布入口注册设置槽位", typeof settingsView === "function");
 const root = settingsView().props.render();
@@ -95,10 +105,47 @@ ok("三个分组按钮各自存在", ["军械整备", "作战沙盘", "附属"].
 ok("含有活动页签", descendants.some(n => n.role === "tab" && n["aria-selected"] === "true"));
 ok("挂载后只发一次 status", methods.filter(method => method === "status").length === 1);
 ok("页面显示响应中的版本", descendants.some(n => n.textContent?.includes("vfixture")));
+
+ok("进入页面不会自动检查更新", !methods.includes("checkPluginUpdate"));
+const updateButton = descendants.find(n => n.tagName === "BUTTON" && n.textContent === "检查更新");
+if (updateButton) {
+  const first = updateButton.listeners.click();
+  await updateButton.listeners.click();
+  await first;
+}
+ok("设置页检查更新，单次操作只发一次请求", methods.filter(m => m === "checkPluginUpdate").length === 1);
+ok("设置页显示发现的新版本", descendants.some(n => n.role === "status" && n.textContent.includes("v1.4")));
+ok("新版提示包含发行说明链接", descendants.some(n => n.role === "status" && n.children.some(link =>
+  link.href === "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" && link.textContent === "查看发行说明")));
+
+const hq = hqView();
+const updateBridge = hq.type().props.children.find(node => node?.props?.key === "update");
+const hqUpdate = updateBridge?.props.render();
+if (hqUpdate) {
+  MOCK_BY_METHOD.checkPluginUpdate = { ok: false, error: "连接超时" };
+  await hqUpdate.children[0].listeners.click();
+}
+ok("独立团指挥部显示更新检查失败，可继续重试",
+  hqUpdate?.children[1].textContent.includes("连接超时") && !hqUpdate?.children[0].disabled);
+if (hqUpdate) {
+  MOCK_BY_METHOD.checkPluginUpdate = { ok: true, state: "current", latestTag: "v1.3.0" };
+  await hqUpdate.children[0].listeners.click();
+}
+ok("独立团指挥部重试后显示最新版", hqUpdate?.children[1].textContent.includes("已是最新版"));
+
 // ④ 源码级：loadStatus 必须有 in-flight 去重
 {
   const src2 = fs.readFileSync(PKG + "/client.settings.js", "utf8");
   ok("loadStatus 有 in-flight 去重（statusInflight）", /statusInflight/.test(src2));
+  const standalone = new Function(src2 + "\nreturn renderConsole;")()({});
+  const stack = [standalone];
+  const standaloneUpdate = [];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.tagName === "BUTTON" && node.textContent === "检查更新") standaloneUpdate.push(node);
+    stack.push(...(node.children ?? []));
+  }
+  ok("独立设置页保留相同的检查更新入口", standaloneUpdate.length === 1);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");

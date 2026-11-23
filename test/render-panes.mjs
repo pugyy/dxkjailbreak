@@ -92,7 +92,7 @@ for (const file of ["client.js", "client.settings.js"]) {
   const star = elements(header).find(n => n.className === "dxk-star");
   assert.equal(star?.href, homepage.href);
   assert.equal(star?.rel, "noopener noreferrer");
-  assert.ok(elements(header).some(n => n.textContent === "您的 Star 是我继续维护的动力。"));
+  assert.ok(elements(header).some(n => n.textContent === "您的 Star 是我继续维护的动力！"));
   const brand = elements(header).find(n => n.tag === "img");
   assert.equal(brand?.src, "/dxkjailbreak/brand.png");
   assert.equal(brand?.alt, "");
