@@ -1,0 +1,72 @@
+name: Bug report
+description: 报告安装、设置页、回退或删除等路径的问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量把版本、复现步骤和报错原文写全——信息越全，修得越快。
+        安全相关问题请勿在此公开提交，走 **Security → Report a vulnerability**。
+  - type: input
+    id: version
+    attributes:
+      label: dxkjailbreak 版本
+      description: 见设置页状态页签或 package.json
+      placeholder: "1.2.48"
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: DSH 宿主版本
+      placeholder: "0.2.1-rc.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 发生了什么
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开设置页 → …
+        2. 点击 …
+        3. 出现 …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 报错原文 / 日志
+      description: 控制台输出或安装器输出，原样粘贴
+      render: text
+  - type: textarea
+    id: expect
+    attributes:
+      label: 期望行为
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已读过 README 的「常见问题排查」
+          required: true
+        - label: 这不是安全漏洞（安全走私密报告入口）
+          required: true
