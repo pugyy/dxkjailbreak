@@ -89,6 +89,10 @@ for (const file of ["client.js", "client.settings.js"]) {
   assert.equal(homepage?.href, "https://github.com/pugyy/dxkjailbreak");
   assert.equal(homepage?.target, "_blank");
   assert.equal(homepage?.rel, "noopener noreferrer");
+  const star = elements(header).find(n => n.className === "dxk-star");
+  assert.equal(star?.href, homepage.href);
+  assert.equal(star?.rel, "noopener noreferrer");
+  assert.ok(elements(header).some(n => n.textContent === "您的 Star 是我继续维护的动力。"));
   const brand = elements(header).find(n => n.tag === "img");
   assert.equal(brand?.src, "/dxkjailbreak/brand.png");
   assert.equal(brand?.alt, "");
@@ -131,6 +135,23 @@ for (const file of ["client.js", "client.settings.js"]) {
         filter.value = "演示工作区";
         filter.events.input();
         assert.ok(elements(panel).some(n => n.textContent === "删除"));
+        const page = panel.children[0];
+        await selected.click();
+        assert.strictEqual(panel.children[0], page, "重复点击当前页签要保留筛选和页面");
+        const refresh = elements(panel).find(n => n.tag === "button" && n.textContent === "刷新列表");
+        fail = true;
+        await refresh.click();
+        assert.ok(elements(panel).some(n => n.textContent?.startsWith("读取会话失败。")));
+        assert.ok(elements(panel).some(n => n.tag === "table"), "失败的刷新要保留上一次列表");
+        fail = false;
+        await refresh.click();
+        assert.ok(elements(panel).some(n => n.className === "dxk-session-message" && n.hidden));
+      }
+      if (label === "对话" && scenario === "空数据") {
+        assert.ok(elements(panel).some(n => n.textContent === "当前没有会话。"));
+      }
+      if (label === "对话" && scenario === "HTTP 503") {
+        assert.ok(elements(panel).some(n => n.textContent === "读取会话失败。 暂时不可用"));
       }
       visited++;
     }

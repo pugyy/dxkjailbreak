@@ -75,26 +75,32 @@ const C = {
   th: "text-align:left;padding:4px 6px;border-bottom:1px solid rgba(128,128,128,.3);font-weight:600;opacity:.85",
   td: "padding:3px 6px;border-bottom:1px solid rgba(128,128,128,.12);vertical-align:top;min-width:0;overflow-wrap:anywhere;word-break:break-word",
   btn: "padding:4px 10px;border-radius:6px;border:1px solid rgba(128,128,128,.4);background:transparent;cursor:pointer;font-size:12px",
-  btnDanger: "padding:4px 10px;border-radius:6px;border:1px solid rgba(220,80,80,.6);color:#d05050;background:transparent;cursor:pointer;font-size:12px",
+  btnDanger: "padding:4px 10px;border-radius:6px;border:1px solid color-mix(in srgb,var(--dxk-bad) 60%,transparent);color:var(--dxk-bad);background:transparent;cursor:pointer;font-size:12px",
   input: "padding:4px 8px;border-radius:6px;border:1px solid rgba(128,128,128,.4);background:transparent;font-size:12px;min-width:220px",
   pre: "white-space:pre-wrap;max-height:240px;overflow:auto;background:rgba(0,0,0,.18);padding:8px;border-radius:6px;margin:6px 0 0",
   badge: "display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;line-height:17px;border:1px solid",
   sect: "font-weight:700;margin:10px 0 6px 0;font-size:13px",
 };
-function badge(text, color) {
+function badge(text, colorOrKind) {
+  // 语义类别走 CSS 类（深色自动切换）；颜色串走 inline（兼容既有调用）
+  const kind = STATUS_KIND[colorOrKind];
+  if (kind) return el("span", { text, className: `dxk-badge-${kind}`, style: `${C.badge};opacity:.95` });
   return el("span", {
     text,
-    style: `${C.badge} color:${color};border-color:${color};opacity:.95`
+    style: `${C.badge} color:${colorOrKind};border-color:${colorOrKind};opacity:.95`
   });
 }
-const STATUS_COLOR = {
-  applied: "#3aa675", already: "#3aa675",
-  pending: "#c9922e",
-  broken: "#d05050", partial: "#d05050", drifted: "#d07850", unmatched: "#d05050",
-  unlocated: "#8a8a8a", missing_file: "#8a8a8a", not_applicable: "#8a8a8a",
-  na: "#8a8a8a", skipped: "#8a8a8a", disabled: "#8a8a8a", off: "#8a8a8a", not_needed: "#8a8a8a",
-  unknown: "#6b7fd7",
+/** 状态→语义类别：着色由 CSS 类 + 变量承担（深色自动适配），不再 inline 硬编码色 */
+const STATUS_KIND = {
+  applied: "ok", already: "ok",
+  pending: "warn",
+  broken: "bad", partial: "bad", drifted: "drift", unmatched: "bad",
+  unlocated: "muted", missing_file: "muted", not_applicable: "muted",
+  na: "muted", skipped: "muted", disabled: "muted", off: "muted", not_needed: "muted",
+  unknown: "info",
 };
+/** 兼容旧引用：STATUS_COLOR 仍返回颜色串（供非 badge 场景的 inline 用） */
+const STATUS_COLOR = new Proxy({}, { get: (_, k) => `var(--dxk-${STATUS_KIND[k] || "info"})` });
 const STATUS_LABEL = {
   applied: "已打", already: "已打", pending: "待打", broken: "失配", partial: "部分命中",
   drifted: "已漂移", unmatched: "未命中",
@@ -211,54 +217,97 @@ function provideSettingsScope(ctx) {
 function consoleStyles() {
   const css = `
     .dxkjailbreak-console {
-      --dxk-accent:#6477e3;
+      --dxk-accent:#6576e6;
+      --dxk-shadow:0 6px 24px rgba(15,23,42,.09);
       --dxk-line:color-mix(in srgb,currentColor 17%,transparent);
       --dxk-surface:color-mix(in srgb,currentColor 4%,transparent);
       --dxk-tint:color-mix(in srgb,var(--dxk-accent) 14%,transparent);
       --dxk-focus:#768bf3;
+      /* 状态色（深浅双轨：宿主深色时自动切换，不再刺眼） */
+      --dxk-ok:#3aa675;
+      --dxk-warn:#c9922e;
+      --dxk-bad:#d05050;
+      --dxk-drift:#d07850;
+      --dxk-muted:#8a8a8a;
+      --dxk-info:#6b7fd7;
       container-type:inline-size;
-      font-family:Inter,system-ui,sans-serif;color:inherit;min-width:0;width:100%;
+      font-family:Inter,system-ui,"Microsoft YaHei UI",sans-serif;color:inherit;min-width:0;width:100%;
       max-width:100%;overflow-wrap:anywhere
     }
     .dxkjailbreak-console :where(button,input,textarea,select) { box-sizing:border-box;max-width:100%;color:inherit }
-    .dxkjailbreak-console :where(button,input,textarea,select,[tabindex]):focus-visible {
+    .dxkjailbreak-console :where(a,button,input,textarea,select,[tabindex]):focus-visible {
       outline:2px solid var(--dxk-focus);outline-offset:2px
     }
     .dxkjailbreak-console .dxk-header {
-      display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
-      padding:16px 18px;margin:0 0 12px;border:1px solid var(--dxk-line);border-radius:14px;
-      background:linear-gradient(115deg,var(--dxk-tint),var(--dxk-surface) 62%);
+      display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+      padding:20px;margin:0 0 16px;border:1px solid var(--dxk-line);border-radius:18px;
+      background:radial-gradient(ellipse at top left,var(--dxk-tint),transparent 68%),var(--dxk-surface);
+      box-shadow:var(--dxk-shadow)
     }
-    .dxkjailbreak-console .dxk-brand { display:flex;align-items:center;gap:12px;min-width:0 }
+    .dxkjailbreak-console .dxk-brand { display:flex;align-items:center;gap:14px;min-width:0 }
     .dxkjailbreak-console .dxk-brand-mark {
-      display:block;flex:none;width:36px;height:36px;border-radius:10px;object-fit:cover;
-      box-shadow:0 3px 9px color-mix(in srgb,#485cc2 25%,transparent);
+      display:block;flex:none;width:48px;height:48px;border-radius:13px;object-fit:cover;
+      box-shadow:0 3px 12px rgba(72,92,194,.28)
     }
-    .dxkjailbreak-console .dxk-header h2 { margin:0;font-size:19px;line-height:1.25;letter-spacing:-.02em }
-    .dxkjailbreak-console .dxk-author { display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px;margin-top:3px;font-size:11px }
-    .dxkjailbreak-console .dxk-author > span { opacity:.75 }
-    .dxkjailbreak-console .dxk-author a { color:inherit;text-underline-offset:2px }
+    .dxkjailbreak-console .dxk-header h2 { margin:0;font-size:22px;line-height:1.2;letter-spacing:-.03em }
+    .dxkjailbreak-console .dxk-author { display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin-top:5px;font-size:12px }
+    .dxkjailbreak-console .dxk-author > span { opacity:.8 }
+    .dxkjailbreak-console .dxk-author a { color:inherit;text-underline-offset:3px }
+    .dxkjailbreak-console .dxk-header-actions { display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:8px }
+    .dxkjailbreak-console .dxk-star {
+      display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;
+      color:inherit;font-weight:650;text-decoration:none;border:1px solid var(--dxk-accent);background:var(--dxk-tint)
+    }
+    .dxkjailbreak-console .dxk-star:hover { background:color-mix(in srgb,var(--dxk-accent) 27%,transparent) }
+    .dxkjailbreak-console .dxk-star-note { grid-column:1/-1;margin:0;font-size:12px;opacity:.82 }
     .dxkjailbreak-console .dxk-version {
       border:1px solid var(--dxk-line);background:var(--dxk-surface);
-      border-radius:100px;padding:4px 10px;font:11px ui-monospace,Consolas,monospace
+      border-radius:999px;padding:5px 10px;font:11px ui-monospace,Consolas,monospace
     }
-    .dxkjailbreak-console .dxk-layout { display:grid;gap:12px;min-width:0 }
+    .dxkjailbreak-console .dxk-layout { display:grid;gap:14px;min-width:0 }
     .dxkjailbreak-console .dxk-nav-shell { min-width:0 }
     .dxkjailbreak-console .dxk-nav {
       display:flex;flex-wrap:wrap;gap:4px;padding:5px;margin:0 0 6px;
-      border-radius:10px;background:var(--dxk-surface)
+      border:1px solid var(--dxk-line);border-radius:12px;background:var(--dxk-surface)
     }
     .dxkjailbreak-console .dxk-nav button {
-      min-height:34px;border-color:transparent!important;border-radius:7px!important
+      min-height:36px;border-color:transparent!important;border-radius:8px!important
     }
     .dxkjailbreak-console .dxk-nav button:is([aria-selected=true],[aria-pressed=true]) {
       background:var(--dxk-tint);box-shadow:inset 0 -2px var(--dxk-accent);opacity:1
     }
     .dxkjailbreak-console .dxk-panel {
-      padding:16px;border:1px solid var(--dxk-line);border-radius:14px;min-width:0
+      padding:18px;border:1px solid var(--dxk-line);border-radius:16px;min-width:0
     }
     .dxkjailbreak-console .dxk-card {
-      background:var(--dxk-surface);border-color:var(--dxk-line)!important;border-radius:10px!important
+      background:var(--dxk-surface);border-color:var(--dxk-line)!important;border-radius:12px!important
+    }
+    .dxkjailbreak-console .dxk-conversations { display:grid;gap:14px;min-width:0 }
+    .dxkjailbreak-console .dxk-conversations h3 { margin:0;font-size:16px;letter-spacing:-.015em }
+    .dxkjailbreak-console .dxk-session-toolbar {
+      display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap
+    }
+    .dxkjailbreak-console .dxk-session-actions { display:flex;align-items:center;flex-wrap:wrap;gap:8px }
+    .dxkjailbreak-console .dxk-session-filter {
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;
+      border:1px solid var(--dxk-line);border-radius:12px;background:var(--dxk-surface)
+    }
+    .dxkjailbreak-console .dxk-session-filter[hidden] { display:none }
+    .dxkjailbreak-console .dxk-session-filter input { flex:1 1 14rem;min-width:0;min-height:34px }
+    .dxkjailbreak-console .dxk-session-summary { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(136px,100%),1fr));gap:10px }
+    .dxkjailbreak-console .dxk-session-list { overflow-x:auto;min-width:0 }
+    .dxkjailbreak-console .dxk-session-list table { border-collapse:separate;border-spacing:0 }
+    .dxkjailbreak-console .dxk-session-list :is(th,td) { box-sizing:border-box;padding:10px 6px }
+    .dxkjailbreak-console .dxk-session-list th:first-child { width:37% }
+    .dxkjailbreak-console .dxk-session-list th:nth-child(2) { width:26% }
+    .dxkjailbreak-console .dxk-session-list th:last-child { width:20% }
+    .dxkjailbreak-console .dxk-session-list button { --dxk-bad:light-dark(#a42a3e,#f18ca0) }
+    .dxkjailbreak-console .dxk-session-time { display:block;font-variant-numeric:tabular-nums }
+    .dxkjailbreak-console .dxk-session-time span + span { display:block;opacity:.8 }
+    .dxkjailbreak-console .dxk-session-workspace { display:block;font-size:11px;opacity:.8 }
+    .dxkjailbreak-console .dxk-session-note { margin:0;opacity:.8 }
+    .dxkjailbreak-console .dxk-session-message {
+      margin:0;padding:16px;border:1px solid var(--dxk-line);border-radius:12px;background:var(--dxk-surface)
     }
     .dxkjailbreak-console .dxk-checks {
       display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:6px;margin:8px 0
@@ -267,9 +316,9 @@ function consoleStyles() {
       display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 9px;
       border:1px solid var(--dxk-line);border-radius:8px;font-size:11px
     }
-    .dxkjailbreak-console .dxk-check[data-status=verified] { border-color:#45a582 }
-    .dxkjailbreak-console .dxk-check[data-status=bad] { border-color:#c96666 }
-    .dxkjailbreak-console .dxk-check[data-status=pending] { border-color:#bd9345 }
+    .dxkjailbreak-console .dxk-check[data-status=verified] { border-color:var(--dxk-ok) }
+    .dxkjailbreak-console .dxk-check[data-status=bad] { border-color:var(--dxk-bad) }
+    .dxkjailbreak-console .dxk-check[data-status=pending] { border-color:var(--dxk-warn) }
     .dxkjailbreak-console .dxk-busy { margin:8px 2px;color:inherit;animation:dxk-pulse 1.1s ease-in-out infinite }
     .dxkjailbreak-console [role=alert] { overflow-wrap:anywhere }
     .dxkjailbreak-console button { transition:border-color .12s ease,background .12s ease }
@@ -277,6 +326,23 @@ function consoleStyles() {
     .dxkjailbreak-console button:disabled { opacity:.55;cursor:wait }
     .dxkjailbreak-console table tbody tr:hover { background:var(--dxk-surface) }
     .dxkjailbreak-console pre { scrollbar-width:thin }
+    @media (prefers-color-scheme:dark) {
+      .dxkjailbreak-console {
+        --dxk-ok:#5bc492;
+        --dxk-warn:#e0b25a;
+        --dxk-bad:#f07a7a;
+        --dxk-drift:#f0a07a;
+        --dxk-muted:#9a9a9a;
+        --dxk-info:#8a9cf0;
+      }
+    }
+    .dxkjailbreak-console .dxk-badge-ok { color:var(--dxk-ok);border-color:var(--dxk-ok) }
+    .dxkjailbreak-console .dxk-badge-warn { color:var(--dxk-warn);border-color:var(--dxk-warn) }
+    .dxkjailbreak-console .dxk-badge-bad { color:var(--dxk-bad);border-color:var(--dxk-bad) }
+    .dxkjailbreak-console .dxk-badge-drift { color:var(--dxk-drift);border-color:var(--dxk-drift) }
+    .dxkjailbreak-console .dxk-badge-muted { color:var(--dxk-muted);border-color:var(--dxk-muted) }
+    .dxkjailbreak-console .dxk-badge-info { color:var(--dxk-info);border-color:var(--dxk-info) }
+    .dxkjailbreak-console button:not(:disabled):active { transform:translateY(1px) }
     @keyframes dxk-pulse { 0%,100% { opacity:.55 } 50% { opacity:1 } }
     @container (min-width:800px) {
       .dxkjailbreak-console .dxk-layout { grid-template-columns:144px minmax(0,1fr);align-items:start }
@@ -285,7 +351,9 @@ function consoleStyles() {
       .dxkjailbreak-console .dxk-nav button:is([aria-selected=true],[aria-pressed=true]) { box-shadow:inset 2px 0 var(--dxk-accent) }
     }
     @container (max-width:520px) {
-      .dxkjailbreak-console .dxk-header,.dxkjailbreak-console .dxk-panel { padding:11px }
+      .dxkjailbreak-console .dxk-header,.dxkjailbreak-console .dxk-panel { padding:13px }
+      .dxkjailbreak-console .dxk-brand-mark { width:42px;height:42px }
+      .dxkjailbreak-console .dxk-header h2 { font-size:19px }
       .dxkjailbreak-console .dxk-nav button { min-height:36px }
     }
     @media(prefers-reduced-motion:reduce) {
@@ -330,7 +398,7 @@ function renderConsole(api) {
   const versionLine = el("span", { className: "dxk-version", text: version, "aria-label": "插件版本" });
   const header = el("header", { className: "dxk-header" }, [
     el("div", { className: "dxk-brand" }, [
-      el("img", { className: "dxk-brand-mark", src: "/dxkjailbreak/brand.png", alt: "", width: 36, height: 36 }),
+      el("img", { className: "dxk-brand-mark", src: "/dxkjailbreak/brand.png", alt: "", width: 48, height: 48 }),
       el("div", {}, [
         el("h2", { text: "dxkjailbreak" }),
         el("div", { className: "dxk-author" }, [
@@ -345,7 +413,17 @@ function renderConsole(api) {
         ]),
       ]),
     ]),
-    versionLine,
+    el("div", { className: "dxk-header-actions" }, [
+      versionLine,
+      el("a", {
+        className: "dxk-star",
+        href: "https://github.com/pugyy/dxkjailbreak",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        "aria-label": "在 GitHub 上为项目点 Star",
+      }, [el("span", { "aria-hidden": "true", text: "★" }), "给项目点 Star"]),
+      el("p", { className: "dxk-star-note", text: "您的 Star 是我继续维护的动力。" }),
+    ]),
   ]);
 
   // 状态缓存（跨 tab 复用，避免重复请求）
@@ -1186,31 +1264,44 @@ function renderConsole(api) {
   //   ③ 当前正在用的会话后端会拒删
 
   /** 会话管理走独立路由（console RPC 白名单是加载时快照，新增方法会 unknown）。 */
-  const convCall = async (action, payload) => {
+  const convCall = async (action, payload = {}) => {
     try {
-      const resp = await fetch("/dxkjailbreak/conversations", {
+      const readOnly = action === "list" || payload.dryRun === true;
+      const response = await fetch("/dxkjailbreak/conversations", {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, payload: payload || {} }),
+        body: JSON.stringify({ action, payload }),
+        signal: readOnly && typeof AbortSignal !== "undefined" ? AbortSignal.timeout?.(20000) : undefined,
       });
-      if (!resp.ok) return { ok: false, error: "HTTP " + resp.status };
-      return await resp.json();
-    } catch (e) {
-      return { ok: false, error: String((e && e.message) || e) };
+      const result = await response.json().catch(() => null);
+      if (!response.ok) return { ok: false, error: result?.error || "HTTP " + response.status };
+      if (!result || typeof result.ok !== "boolean") return { ok: false, error: "会话服务返回了无效响应。" };
+      return result;
+    } catch (error) {
+      return {
+        ok: false,
+        error: error?.name === "TimeoutError" ? "会话请求超时，请重试。" : String(error?.message || error),
+      };
     }
   };
   const paneConversations = () => {
     let rows = [];
-    const cards = el("div", { style: C.row });
-    const note = el("p", { style: C.muted });
-    const body = el("div", {});
-    const count = el("span", { className: "dxk-result-count", role: "status" });
-    const search = el("input", { type: "search", "aria-label": "筛选对话", placeholder: "筛选会话 ID 或工作区", style: C.input });
-    const filterBar = el("div", { style: C.row + ";align-items:center" }, [search, count]);
-    filterBar.hidden = true;
-    const list = el("div", {});
+    let disposed = false;
+    let listRequest = 0;
+    const deleting = new Set();
     const closeConfirmation = { cancel: null };
+    const cards = el("div", { className: "dxk-session-summary" });
+    const message = el("p", { role: "status", className: "dxk-session-message", text: "正在读取会话…" });
+    const count = el("span", { className: "dxk-result-count", role: "status" });
+    const search = el("input", { type: "search", "aria-label": "筛选对话", placeholder: "按会话 ID 或工作区筛选", style: C.input });
+    const filterBar = el("div", { className: "dxk-session-filter", hidden: true }, [search, count]);
+    const list = el("div", { className: "dxk-session-list" });
+    const feedback = el("p", { role: "status", className: "dxk-session-note", hidden: true });
+    const showFeedback = (text) => {
+      feedback.textContent = text;
+      feedback.hidden = !text;
+    };
 
     /** 确认弹窗：必须点「确认删除」才返回 true。 */
     const confirmDelete = (row) => new Promise((resolve) => {
@@ -1222,8 +1313,7 @@ function renderConsole(api) {
       const panel = el("div", {
         style: "max-width:520px;width:100%;background:#24262d;color:#e8e8e8;border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:18px;box-shadow:0 16px 48px rgba(0,0,0,.6);font-size:13px",
       });
-      let title = "确认删除这个对话？";
-      panel.appendChild(el("div", { style: "font-size:15px;font-weight:600;margin-bottom:10px" }, title));
+      panel.appendChild(el("div", { style: "font-size:15px;font-weight:600;margin-bottom:10px" }, "确认删除这个对话？"));
       panel.appendChild(el("div", {
         style: "font-family:ui-monospace,monospace;font-size:12px;background:rgba(0,0,0,.28);border-radius:8px;padding:10px;margin-bottom:12px;word-break:break-all",
       }, [
@@ -1247,13 +1337,14 @@ function renderConsole(api) {
       panel.appendChild(btns);
       mask.appendChild(panel);
       const onKey = (event) => {
-        if (event.key === "Escape") { event.preventDefault(); finish(false); }
+        if (event.key === "Escape") { event.preventDefault(); finish(false); return; }
         if (event.key === "Tab") {
           event.preventDefault();
           (document.activeElement === cancel ? okBtn : cancel).focus();
         }
       };
       const finish = (accepted) => {
+        if (!closeConfirmation.cancel) return;
         closeConfirmation.cancel = null;
         mask.remove();
         document.removeEventListener("keydown", onKey);
@@ -1266,84 +1357,121 @@ function renderConsole(api) {
       cancel.focus();
     });
 
+    const deleteRow = async (row) => {
+      if (closeConfirmation.cancel || deleting.has(row.sessionId) || !await confirmDelete(row)) return;
+      deleting.add(row.sessionId);
+      try {
+        await withBusy(async () => {
+          const preview = await convCall("delete", { sessionId: row.sessionId, dryRun: true });
+          if (!preview.ok) {
+            if (!disposed) showError("不能删除：" + preview.error);
+            return;
+          }
+          const result = await convCall("delete", {
+            sessionId: row.sessionId,
+            confirmSessionId: row.sessionId,
+            dryRun: false,
+          });
+          if (disposed) return;
+          if (!result.ok) {
+            showError("删除失败：" + result.error);
+            return;
+          }
+          showError("");
+          showFeedback("对话已移入 Windows 回收站。");
+          rows = rows.filter(item => item.sessionId !== row.sessionId);
+          drawSummary();
+          drawRows();
+          await load();
+        });
+      } finally {
+        deleting.delete(row.sessionId);
+        if (!disposed) drawRows();
+      }
+    };
+
+    const drawSummary = () => {
+      const bytes = rows.reduce((sum, row) => sum + (Number(row.size) || 0), 0);
+      const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
+      cards.replaceChildren(card("对话总数", String(rows.length)), card("占用空间", size));
+    };
+    const updatedAt = (row) => {
+      const date = Number.isFinite(row.mtime) && row.mtime > 0 ? new Date(row.mtime) : null;
+      if (!date || !Number.isFinite(date.getTime())) return row.timeText || "—";
+      return el("time", { className: "dxk-session-time", datetime: date.toISOString() }, [
+        el("span", { text: date.toLocaleDateString() }),
+        el("span", { text: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }),
+      ]);
+    };
     const drawRows = () => {
       const query = String(search.value || "").trim().toLowerCase();
-      const visible = query ? rows.filter(row => row.sessionId.toLowerCase().includes(query)
-        || String(row.workspace || "").toLowerCase().includes(query)) : rows;
+      const visible = rows.filter(row => !query || row.sessionId.toLowerCase().includes(query)
+        || String(row.workspace || "").toLowerCase().includes(query));
+      filterBar.hidden = rows.length === 0;
       count.textContent = query ? "显示 " + visible.length + " / " + rows.length + " 条" : "共 " + rows.length + " 条";
-      if (query && !visible.length) {
-        list.replaceChildren(el("p", { text: "没有匹配的会话。", style: C.muted }));
+      if (!visible.length) {
+        if (query && rows.length) list.replaceChildren(el("p", { text: "没有匹配的会话。", className: "dxk-session-message" }));
+        else list.replaceChildren();
         return;
       }
       list.replaceChildren(table(
-        ["会话", "时间", "大小", "操作"],
+        ["会话 / 工作区", "更新时间", "大小", "操作"],
         visible,
-        (x) => [
+        (row) => [
           el("td", { style: C.td }, [
-            el("span", { style: "font-family:ui-monospace,monospace;font-size:11px", title: x.sessionId }, x.sessionId.length > 24 ? x.sessionId.slice(0, 24) + "…" : x.sessionId),
+            el("span", { style: "font-family:ui-monospace,monospace;font-size:11px", title: row.sessionId },
+              row.sessionId.length > 24 ? row.sessionId.slice(0, 24) + "…" : row.sessionId),
+            el("span", { className: "dxk-session-workspace", text: row.workspace || "未分组" }),
           ]),
-          el("td", { style: C.td, text: x.timeText || "-" }),
-          el("td", { style: C.td, text: x.sizeText || "-" }),
+          el("td", { style: C.td }, updatedAt(row)),
+          el("td", { style: C.td, text: row.sizeText || "—" }),
           el("td", { style: C.td }, [
-            el("button", { text: "删除", style: C.btn + ";background:#5a2020;color:#fff;border-color:#833", onclick: async () => {
-              const yes = await confirmDelete(x);
-              if (!yes) return;
-              await withBusy(async () => {
-                // 先演练再执行：两次都过同一套后端校验
-                const dry = await convCall("delete", { sessionId: x.sessionId, dryRun: true });
-                if (!dry || dry.ok === false) { showError("不能删除：" + ((dry && dry.error) || "未知")); return; }
-                const done = await convCall("delete", { sessionId: x.sessionId, confirmSessionId: x.sessionId, dryRun: false });
-                if (!done || done.ok === false) { showError("删除失败：" + ((done && done.error) || "未知")); return; }
-                showError("");
-                await render();
-              });
-            } }),
+            el("button", { text: "删除", style: C.btnDanger, disabled: deleting.has(row.sessionId),
+              "aria-label": "删除会话 " + row.sessionId, onclick: () => deleteRow(row) }),
           ]),
         ],
       ));
-
     };
     search.addEventListener("input", drawRows);
 
-    const render = () => withBusy(async () => {
-      const r = await convCall("list");
-      cards.replaceChildren();
-      body.replaceChildren();
-      list.replaceChildren();
-      rows = [];
-      filterBar.hidden = true;
-      note.textContent = "";
-      if (!r || r.ok === false) {
-        cards.appendChild(card("对话", "读取失败", (r && r.error) || ""));
+    const load = () => withBusy(async () => {
+      const request = ++listRequest;
+      const result = await convCall("list");
+      if (disposed || request !== listRequest) return;
+      if (!result.ok || !Array.isArray(result.sessions)) {
+        message.textContent = "读取会话失败。 " + (result.error || "会话列表格式无效。");
+        message.hidden = false;
         return;
       }
-      rows = Array.isArray(r.sessions) ? r.sessions.filter(row => typeof row?.sessionId === "string" && row.sessionId) : [];
-      const totalSize = rows.reduce((total, row) => total + (Number(row.size) || 0), 0);
-      cards.appendChild(card("对话总数", String(rows.length), "个会话目录"));
-      cards.appendChild(card("占用空间", totalSize > 1048576 ? (totalSize / 1048576).toFixed(1) + " MB" : Math.round(totalSize / 1024) + " KB", "sessions 目录"));
-      cards.appendChild(card("删除方式", "系统回收站", "删完可从 Windows 回收站还原"));
-      note.textContent = "删除 = 移入 Windows 系统回收站（可在系统回收站里还原）。点「删除」先弹确认窗，确认后才动。";
-
-      filterBar.hidden = rows.length === 0;
+      rows = result.sessions.filter(row => typeof row?.sessionId === "string" && row.sessionId);
+      drawSummary();
       drawRows();
-      const cleanRow = el("div", { style: C.row + ";margin-top:10px" });
-      cleanRow.appendChild(el("button", {
-        text: "检查未分组会话",
-        style: C.btn,
-        onclick: () => withBusy(async () => {
-          const result = await convCall("cleanup", { dryRun: true });
-          if (!result || result.ok === false) { showError("检查失败：" + (result?.error || "")); return; }
-          showError("");
-          window.alert(result.note || "检查完成。");
-        }),
-      }));
-      body.appendChild(cleanRow);
-
+      message.textContent = rows.length ? "" : "当前没有会话。";
+      message.hidden = rows.length > 0;
     });
-
-    render();
-    const pane = el("div", {}, [cards, note, filterBar, list, body]);
-    pane.__dxkDispose = () => closeConfirmation.cancel?.();
+    const toolbar = el("div", { className: "dxk-session-toolbar" }, [
+      el("h3", { text: "对话管理" }),
+      el("div", { className: "dxk-session-actions" }, [
+        el("button", { text: "刷新列表", style: C.btn, onclick: load }),
+        el("button", { text: "检查未分组会话", style: C.btn, onclick: () => withBusy(async () => {
+          const result = await convCall("cleanup", { dryRun: true });
+          if (disposed) return;
+          if (!result.ok) showError("检查失败：" + result.error);
+          else {
+            showError("");
+            showFeedback(result.note || "检查完成。");
+          }
+        }) }),
+      ]),
+    ]);
+    const pane = el("div", { className: "dxk-conversations" }, [toolbar, cards,
+      el("p", { className: "dxk-session-note", text: "删除的对话可在 Windows 回收站中还原。" }),
+      message, feedback, filterBar, list]);
+    pane.__dxkDispose = () => {
+      disposed = true;
+      closeConfirmation.cancel?.();
+    };
+    load();
     return pane;
   };
 
@@ -1516,6 +1644,10 @@ function renderConsole(api) {
     };
   };
   const selectTab = (tab) => {
+    if (tab === curTab) {
+      bar.querySelector('[aria-selected="true"]')?.focus();
+      return;
+    }
     curTab = tab;
     saveTabChoice();
     drawTabs();
@@ -1565,6 +1697,7 @@ function renderConsole(api) {
         style: C.btn + (active ? ";font-weight:700" : ";opacity:.7"),
         "aria-pressed": active ? "true" : "false",
         onclick: () => {
+          if (group === curGroup) return;
           curGroup = group;
           curTab = Object.keys(GROUPS[group])[0];
           saveTabChoice();
