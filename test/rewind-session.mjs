@@ -195,20 +195,39 @@ test("published frontend refreshes the same session and guards the current draft
     useEffect() {},
     createElement: (type, props, children) => ({ type, props, children }),
   };
+  const observedSelections = [];
+  let failResync = false;
+  let withoutBaseline = false;
+  let previousSelection;
   const projections = {
     selection: "before rewind",
-    clear() { this.selection = undefined; },
-  };
-  const model = {
-    projections, removed: false, openState: "open",
-    async resync() {
-      assert.strictEqual(manager.projectionStores.get(sourceId), projections);
-      assert.equal(projections.selection, undefined);
-      assert.equal(manager.projectionInflight.has(sourceId), false);
-      assert.equal(manager.projectionLoads.has(sourceId), false);
-      projections.selection = "rewound model " + (++refreshCount);
+    clear() {
+      this.selection = undefined;
+      queueMicrotask(() => observedSelections.push(this.selection));
     },
   };
+  const prototype = {
+    installWindow(_entries, _hasMore, baseline) {
+      if (baseline) projections.selection = baseline.values.modelSelection;
+    },
+    async resync() {
+      assert.strictEqual(manager.projectionStores.get(sourceId), projections);
+      assert.equal(manager.projectionInflight.has(sourceId), false);
+      assert.equal(manager.projectionLoads.has(sourceId), false);
+      await Promise.resolve();
+      assert.equal(projections.selection, previousSelection);
+      if (failResync) {
+        this.openState = "error";
+        return;
+      }
+      this.openState = "open";
+      const value = "rewound model " + (++refreshCount);
+      this.installWindow([], false, { asOfSeq: 2, values: withoutBaseline ? {} : { modelSelection: value } });
+    },
+  };
+  const model = Object.assign(Object.create(prototype), {
+    projections, removed: false, openState: "open",
+  });
   const manager = {
     sessions: new Map([[sourceId, model]]),
     projectionStores: new Map([[sourceId, projections]]),
@@ -228,7 +247,7 @@ test("published frontend refreshes the same session and guards the current draft
       manager.projectionInflight.set(sourceId, { controller: request });
       manager.listInflight = Promise.resolve().then(() => {
         // A catalog response begun before the rewind can contain a newer cursor.
-        projections.selection = "stale model";
+        previousSelection = projections.selection = "stale model";
         manager.projectionStores.set(sourceId, {});
       });
       model.removed = true;
@@ -252,7 +271,9 @@ test("published frontend refreshes the same session and guards the current draft
   });
   assert.equal((await sandbox.api.__dxkRewind("")).ok, false);
   assert.deepEqual(sent, []);
-  assert.match(await sandbox.api.dxkCompleteRewind(sourceId), /当前对话回退上一轮/);
+  const first = sandbox.api.dxkCompleteRewind(sourceId);
+  assert.strictEqual(sandbox.api.dxkCompleteRewind(sourceId), first);
+  assert.match(await first, /当前对话回退上一轮/);
   assert.equal(projections.selection, "rewound model 1");
   assert.equal(model.removed, false);
   assert.equal(selected, sourceId);
@@ -263,11 +284,26 @@ test("published frontend refreshes the same session and guards the current draft
   assert.equal(projections.selection, "rewound model 2");
   assert.equal(model.removed, false);
   assert.ok(stale.every(request => request.signal.aborted));
+  assert.deepEqual(observedSelections, ["rewound model 1", "rewound model 2"]);
+  assert.equal(Object.hasOwn(model, "installWindow"), false);
   switchOnCall = true;
   await sandbox.api.dxkCompleteRewind(sourceId);
   assert.equal(selected, "session-other");
   assert.equal(refreshCount, 3);
   assert.deepEqual(drafts, [[sourceId, "Hello"]]);
+
+  selected = sourceId;
+  switchOnCall = false;
+  withoutBaseline = true;
+  await sandbox.api.dxkCompleteRewind(sourceId);
+  assert.equal(projections.selection, "stale model");
+  assert.equal(observedSelections.length, 3);
+  withoutBaseline = false;
+  failResync = true;
+  assert.match(await sandbox.api.dxkCompleteRewind(sourceId), /回退已保存/);
+  assert.equal(projections.selection, "stale model");
+  assert.equal(Object.hasOwn(model, "installWindow"), false);
+  failResync = false;
 
   // Exercise the actual toolbar callbacks, including a menu left open during a session switch.
   selected = sourceId;

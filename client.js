@@ -261,30 +261,40 @@ function consoleStyles() {
       outline:2px solid var(--dxk-focus);outline-offset:2px
     }
     .dxkjailbreak-console .dxk-header {
-      display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
-      padding:20px;margin:0 0 16px;border:1px solid var(--dxk-line);border-radius:18px;
+      display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+      grid-template-areas:"mark title actions" "mark author author";align-items:center;gap:4px 12px;
+      padding:10px 14px;margin:0 0 16px;border:1px solid var(--dxk-line);border-radius:18px;
       background:radial-gradient(ellipse at top left,var(--dxk-tint),transparent 68%),var(--dxk-surface);
       box-shadow:var(--dxk-shadow)
     }
-    .dxkjailbreak-console .dxk-brand { display:flex;align-items:center;gap:14px;min-width:0 }
     .dxkjailbreak-console .dxk-brand-mark {
-      display:block;flex:none;width:48px;height:48px;border-radius:13px;object-fit:cover;
+      grid-area:mark;display:block;width:44px;height:44px;border-radius:13px;object-fit:cover;
       box-shadow:0 3px 12px rgba(72,92,194,.28)
     }
+    .dxkjailbreak-console .dxk-brand-title { grid-area:title;display:flex;align-items:center;flex-wrap:wrap;gap:3px 8px;min-width:0 }
     .dxkjailbreak-console .dxk-header h2 { margin:0;font-size:22px;line-height:1.2;letter-spacing:-.03em }
-    .dxkjailbreak-console .dxk-author { display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin-top:5px;font-size:12px }
-    .dxkjailbreak-console .dxk-author > span { opacity:.8 }
-    .dxkjailbreak-console .dxk-author a { color:inherit;text-underline-offset:3px }
-    .dxkjailbreak-console .dxk-header-actions { display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:8px }
-    .dxkjailbreak-console .dxk-star {
-      display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;
-      color:inherit;font-weight:650;text-decoration:none;border:1px solid var(--dxk-accent);background:var(--dxk-tint)
+    .dxkjailbreak-console .dxk-author {
+      grid-area:author;display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;font-size:12px;min-width:0
     }
+    .dxkjailbreak-console .dxk-author > span { opacity:.82 }
+    .dxkjailbreak-console .dxk-author a { color:inherit;text-underline-offset:3px;overflow-wrap:anywhere }
+    .dxkjailbreak-console .dxk-header-actions {
+      grid-area:actions;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+    }
+    .dxkjailbreak-console .dxk-header-actions :is(.dxk-star,.dxk-update) {
+      box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+      min-width:108px;min-height:34px;gap:6px;padding:4px 10px;border-radius:999px;
+      color:inherit;font:inherit;font-weight:650;text-decoration:none;white-space:nowrap
+    }
+    .dxkjailbreak-console .dxk-star { border:1px solid var(--dxk-accent);background:var(--dxk-tint) }
     .dxkjailbreak-console .dxk-star:hover { background:color-mix(in srgb,var(--dxk-accent) 27%,transparent) }
-    .dxkjailbreak-console .dxk-star-note { grid-column:1/-1;margin:0;font-size:12px;opacity:.82 }
+    .dxkjailbreak-console .dxk-update { border:1px solid var(--dxk-line);background:var(--dxk-surface);cursor:pointer }
+    .dxkjailbreak-console .dxk-update:not(:disabled):hover { border-color:var(--dxk-accent) }
+    .dxkjailbreak-console .dxk-update-status { grid-column:2/-1 }
+    .dxkjailbreak-console .dxk-update-status:empty { position:absolute }
     .dxkjailbreak-console .dxk-version {
       border:1px solid var(--dxk-line);background:var(--dxk-surface);
-      border-radius:999px;padding:5px 10px;font:11px ui-monospace,Consolas,monospace
+      border-radius:999px;padding:4px 8px;font:11px ui-monospace,Consolas,monospace;white-space:nowrap
     }
     .dxkjailbreak-console .dxk-layout { display:grid;gap:14px;min-width:0 }
     .dxkjailbreak-console .dxk-nav-shell { min-width:0 }
@@ -373,7 +383,13 @@ function consoleStyles() {
       .dxkjailbreak-console .dxk-nav button:is([aria-selected=true],[aria-pressed=true]) { box-shadow:inset 2px 0 var(--dxk-accent) }
     }
     @container (max-width:520px) {
-      .dxkjailbreak-console .dxk-header,.dxkjailbreak-console .dxk-panel { padding:13px }
+      .dxkjailbreak-console .dxk-panel { padding:13px }
+      .dxkjailbreak-console .dxk-header {
+        grid-template-columns:auto minmax(0,1fr);
+        grid-template-areas:"mark title" "mark author" "actions actions";padding:10px 12px
+      }
+      .dxkjailbreak-console .dxk-header-actions { justify-self:start;margin-top:4px }
+      .dxkjailbreak-console .dxk-update-status { grid-column:1/-1 }
       .dxkjailbreak-console .dxk-brand-mark { width:42px;height:42px }
       .dxkjailbreak-console .dxk-header h2 { font-size:19px }
       .dxkjailbreak-console .dxk-nav button { min-height:36px }
@@ -499,25 +515,14 @@ function renderConsole(api) {
 
   let version = "v" + FALLBACK_VERSION;
   const versionLine = el("span", { className: "dxk-version", text: version, "aria-label": "插件版本" });
+  const [updateButton, updateStatus] = renderReleaseCheck(api, "").children;
+  updateButton.className = "dxk-update";
+  updateStatus.className = "dxk-update-status";
   const header = el("header", { className: "dxk-header" }, [
-    el("div", { className: "dxk-brand" }, [
-      el("img", { className: "dxk-brand-mark", src: "/dxkjailbreak/brand.png", alt: "", width: 48, height: 48 }),
-      el("div", {}, [
-        el("h2", { text: "dxkjailbreak" }),
-        el("div", { className: "dxk-author" }, [
-          el("span", { text: "by dxk" }),
-          el("span", { "aria-hidden": "true", text: "·" }),
-          el("a", {
-            href: "https://github.com/pugyy/dxkjailbreak",
-            target: "_blank",
-            rel: "noopener noreferrer",
-            text: "github.com/pugyy/dxkjailbreak",
-          }),
-        ]),
-      ]),
-    ]),
+    el("img", { className: "dxk-brand-mark", src: "/dxkjailbreak/brand.png", alt: "", width: 44, height: 44 }),
+    el("div", { className: "dxk-brand-title" }, [el("h2", { text: "dxkjailbreak" }), versionLine]),
     el("div", { className: "dxk-header-actions" }, [
-      versionLine,
+      updateButton,
       el("a", {
         className: "dxk-star",
         href: "https://github.com/pugyy/dxkjailbreak",
@@ -525,9 +530,19 @@ function renderConsole(api) {
         rel: "noopener noreferrer",
         "aria-label": "在 GitHub 上为项目点 Star",
       }, [el("span", { "aria-hidden": "true", text: "★" }), "给项目点 Star"]),
-      el("p", { className: "dxk-star-note", text: "您的 Star 是我继续维护的动力。" }),
-      renderReleaseCheck(api),
     ]),
+    el("div", { className: "dxk-author" }, [
+      el("span", { text: "by dxk" }),
+      el("span", { "aria-hidden": "true", text: "·" }),
+      el("a", {
+        href: "https://github.com/pugyy/dxkjailbreak",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        text: "github.com/pugyy/dxkjailbreak",
+      }),
+      el("span", { text: "您的 Star 是我继续维护的动力！" }),
+    ]),
+    updateStatus,
   ]);
 
   // 状态缓存（跨 tab 复用，避免重复请求）
@@ -1964,8 +1979,54 @@ function dxkConversationInput(sessionId) {
   } catch (e) { return null; }
 }
 
-async function dxkCompleteRewind(sourceId) {
-  if (!sourceId) return "请在需要回退的对话内操作。";
+// The host publishes the replacement history and its projections in installWindow.
+async function dxkResyncRewoundSession(model) {
+  const projections = model.projections;
+  const original = model.installWindow;
+  if (typeof original !== "function" || typeof projections?.clear !== "function") {
+    await model.resync();
+    return;
+  }
+
+  const ownMethod = Object.hasOwn(model, "installWindow");
+  let waitingForBaseline = true;
+  function installRewoundWindow(entries, hasMore, baseline, assistantStream) {
+    if (waitingForBaseline && baseline?.values) {
+      // DSH sends an empty block when a history page has no projection metadata.
+      // Keep the live values until there is a complete replacement to publish.
+      if (Object.keys(baseline.values).length === 0) {
+        return original.call(this, entries, hasMore, undefined, assistantStream);
+      }
+      waitingForBaseline = false;
+      // DSH batches projection notifications in a microtask. Reset the old
+      // cursor and install the new values in this same synchronous callback.
+      projections.clear();
+    }
+    return original.call(this, entries, hasMore, baseline, assistantStream);
+  }
+  model.installWindow = installRewoundWindow;
+  try {
+    await model.resync();
+  } finally {
+    if (model.installWindow === installRewoundWindow) {
+      if (ownMethod) model.installWindow = original;
+      else delete model.installWindow;
+    }
+  }
+}
+
+const dxkPendingRewinds = new Map();
+
+function dxkCompleteRewind(sourceId) {
+  if (!sourceId) return Promise.resolve("请在需要回退的对话内操作。");
+  const pending = dxkPendingRewinds.get(sourceId);
+  if (pending) return pending;
+  const operation = dxkRewindSessionInPlace(sourceId).finally(() => dxkPendingRewinds.delete(sourceId));
+  dxkPendingRewinds.set(sourceId, operation);
+  return operation;
+}
+
+async function dxkRewindSessionInPlace(sourceId) {
   var sessions = __dxkHostSessions || __dxkSessions;
   var manager = sessions?.manager;
   var model = manager?.sessions?.get(sourceId);
@@ -1982,16 +2043,12 @@ async function dxkCompleteRewind(sourceId) {
       model = manager.sessions.get(sourceId);
     }
     if (result.refresh && typeof model?.resync === "function") {
-      // Rewind lowers the history cursor. Clear this session's stale projections
-      // while retaining the store that the input and model selector subscribe to.
+      // Cancel reads of the old history and retain the subscribed projection store.
       manager.projectionInflight?.get(sourceId)?.controller?.abort();
       manager.projectionInflight?.delete(sourceId);
       manager.projectionLoads?.delete(sourceId);
-      if (model.projections) {
-        manager.projectionStores?.set(sourceId, model.projections);
-        model.projections.clear?.();
-      }
-      await model.resync();
+      if (model.projections) manager.projectionStores?.set(sourceId, model.projections);
+      await dxkResyncRewoundSession(model);
       refreshed = manager.sessions.get(sourceId) === model && model.openState === "open";
       if (refreshed && model.removed) {
         model.removed = false;
