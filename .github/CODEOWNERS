@@ -1,0 +1,26 @@
+# CODEOWNERS — 代码归属与评审默认指派人
+# 语法：<pattern> <owner...>
+# 全部代码由仓库所有者维护；外部 PR 默认请求 @pugyy 评审。
+
+* @pugyy
+
+# 破甲链路与宿主适配核心：任何改动都需要所有者评审
+/cordis.patch.yml                        @pugyy
+/modes/                                  @pugyy
+/docs/home/                              @pugyy
+/lib/patches/                            @pugyy
+/lib/core/                               @pugyy
+/plugins/dsh-refusal-guard/lib/          @pugyy
+
+# 安装器与卸载路径：涉及用户宿主，必须评审
+/install.mjs                             @pugyy
+/setup.cmd                               @pugyy
+/install.cmd                             @pugyy
+/install.sh                              @pugyy
+/uninstall.cmd                           @pugyy
+
+# 供应链与发布件
+/package.json                            @pugyy
+/NOTICE                                  @pugyy
+/LICENSE                                 @pugyy
+/vendor/                                 @pugyy
