@@ -210,10 +210,6 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 **建议先用 DeepSeek V4 系列**（V4 Pro，或 V4.1-Flash 的 default 推理挡位）起手；等对话跑顺了，**3–5 轮之后**再切换其他模型或调高推理强度——这样成功率和稳定性最好。一上来就顶到高推理强度，反而容易在开头几轮反复自我审查，白白耗掉回合。
 
-### 版本历程
-
-> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
-
 #### 💖 赞助与支持
 
 如果这个项目帮你省下了时间、少踩了坑，欢迎请我喝一杯。所有捐赠都用在后续维护、测试与文档上。
@@ -227,6 +223,11 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 > 仅支持 **USDT**。转账前请务必核对网络：ERC20 与 BEP20 共用同一个 0x 地址，但两条链互不相通；选错网络或跨链转错，资产将无法找回。
 
 **捐赠时欢迎留下名字**（在转账备注里写上即可），会在后续版本的致谢名单中具名提及。**谢谢每一位支持者**——这个项目能一直更新下去，靠的就是这些具体的支持。
+
+### 版本历程
+
+> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
+
 #### 🚀 v1.4.0 — 执行稳定性与检测精度（当前版本）
 
 **执行更稳**
@@ -523,10 +524,6 @@ Runs on Windows / macOS / Linux; mounts on both desktop and web hosts.
 
 Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* reasoning level). Once the conversation is running smoothly, switch to another model or raise the reasoning strength **after 3–5 rounds** — that gives the best success rate and the steadiest behavior. Going straight to a high setting tends to trigger repeated self-review in the opening rounds and burns turns for nothing.
 
-### Release history
-
-> From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
-
 #### 💖 Sponsorship & support
 
 If this project saved you time or kept you out of a few potholes, you're welcome to buy me a drink. All donations go into maintenance, testing and documentation.
@@ -540,6 +537,11 @@ If this project saved you time or kept you out of a few potholes, you're welcome
 > **USDT only.** Check the network before sending: ERC20 and BEP20 share the same `0x` address, but the two chains are not interchangeable — funds sent over the wrong network cannot be recovered.
 
 **Leave your name when donating** (just put it in the transfer memo) and you'll be credited by name in the acknowledgements of a future release. **Thank you to everyone who supports this project** — these concrete contributions are what keep it shipping.
+
+### Release history
+
+> From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
+
 #### 🚀 v1.4.0 — execution stability and detection accuracy (current)
 
 This release makes the assistant follow task instructions more reliably inside security-research sessions, hesitates far less mid-task, and fixes the detection layer's false positives and false negatives together.
