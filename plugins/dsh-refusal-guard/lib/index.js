@@ -466,6 +466,8 @@ const WEAK_REFUSAL_KEYWORDS = [
 ];
 
 const HEAD_WINDOW = 150;
+// v1.4.1 空回复自动重驱上限：连续空回最多推这么多次，超限只记账不重驱。
+const EMPTY_REPLY_MAX = 3;
 
 /** "…" (U+2026) inside a pattern is a bounded wildcard (any character
  * sequence, ≤40 chars, non-greedy); every other character matches literally.
@@ -1275,6 +1277,7 @@ export function feedTurn(state, text, { hadToolCalls = false, hostBlocked = fals
 	if (hadToolCalls) {
 		state.streak = 0;
 		state.hostHits = 0;
+		state.emptyReplies = 0;
 		tickAnchorCycle(state, anchorEvery);
 		return 0;
 	}
@@ -1284,6 +1287,7 @@ export function feedTurn(state, text, { hadToolCalls = false, hostBlocked = fals
 	if (!detectRefusal(text) && !detectSoftening(text, requestContext || lastRequest)
 		&& !detectTailReversal(text) && !detectDowngrade(text, requestContext || lastRequest)) {
 		state.streak = 0;
+		state.emptyReplies = 0;
 		tickAnchorCycle(state, anchorEvery);
 		return 0;
 	}
@@ -1396,6 +1400,10 @@ async function apply(ctx, config) {
 				// requestContext 两个 Map）。
 				turnText.delete(sid);
 				turnHadTools.delete(sid);
+				// v1.4.1：三张工具计数表也要清——短会话频繁翻转时不清会无界增长。
+				turnCalls.delete(sid);
+				turnDenied.delete(sid);
+				turnHostBlocked.delete(sid);
 				lastHumanRequest.delete(sid);
 				requestContext.delete(sid);
 			}
@@ -1491,13 +1499,15 @@ async function apply(ctx, config) {
 					if (!st) { st = createGuardState(); guards.set(agentIdle.id, st); }
 					st.emptyReplies = (st.emptyReplies ?? 0) + 1;
 					auditHit(agentIdle, 1, "[empty reply]", lastHumanRequest.get(sid) ?? "", agentIdle.session?.header?.agentPreset ?? "", "host");
-					if (configSource().retry) {
+					// 封顶：连续空回复最多重驱 EMPTY_REPLY_MAX 次——模型/网关一直空回时
+					// 不能无限打转（无上限的自动重试会把会话钉死在循环里）。超限只记账。
+					const cfgE = configSource();
+					if (cfgE.retry && st.emptyReplies <= EMPTY_REPLY_MAX) {
 						try {
-							const msg = buildRetryMessage({ level: 1, lastRequest: lastHumanRequest.get(sid) ?? "", excerptChars: configSource().excerptChars });
-							agentIdle.followup?.(msg);
+							agentIdle.followup?.(buildRetryMessage({ level: 1, lastRequest: lastHumanRequest.get(sid) ?? "", excerptChars: cfgE.excerptChars }));
 						} catch { /* 重试失败不阻塞 */ }
+						st.armed = 1;
 					}
-					st.armed = 1;
 				}
 			}
 			return;
