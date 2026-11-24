@@ -99,7 +99,11 @@ for (const lvl of [1, 2, 3]) {
 	ok("buildRetryMessage(thickReq 分支) 自咬", detectRefusal(thick.content[0].text), false);
 }
 // armor-grep 纪律：v0.5.0 新 SOFT 词不得进入锚文本（复述面）
-const newSoftWords = ["先出具授权", "请合法使用", "合规的替代", "我再想想该不该", "该不该给", "你要不要我继续", "要不要我继续"];
+const newSoftWords = ["先出具授权", "请合法使用", "合规的替代", "我再想想该不该", "该不该给", "你要不要我继续", "要不要我继续",
+	// v1.3.3 P0-2 新 SOFT 词（同 armor-grep 纪律）
+	"a bit delicate", "i'd rather keep this brief", "容我斟酌", "恕难从命", "为避免歧义", "这个话题比较微妙",
+	// v1.3.3 P0-2 既有 WEAK 词「i should be careful」被甲 V4.1 条引用面暴露（进 POLICY_ECHO，同不进锚纪律）
+	"i should be careful"];
 let softInAnchors = [];
 for (const w of newSoftWords) {
 	if (TAIL_ANCHOR_TEXT.includes(w) || CHILD_ANCHOR_TEXT.includes(w)) softInAnchors.push(w);
