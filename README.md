@@ -6,14 +6,14 @@
 **一个插件，11 种安全工作流，一个控制台。**
 
 [![License](https://img.shields.io/github/license/pugyy/dxkjailbreak?color=blue&style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.0-green?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.1-green?style=flat-square)](CHANGELOG.md)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-%E2%89%A50.2.1--rc.2-orange?style=flat-square)](package.json)
 [![Tests](https://img.shields.io/badge/tests-600%2B%20assertions-brightgreen?style=flat-square)](test/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](package.json)
 <br>
 [![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](#特性一览)
 [![Plugin](https://img.shields.io/badge/sub--plugins-17-9cf?style=flat-square)](#子插件17)
-[![Release](https://img.shields.io/badge/release-v1.4.0-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.1)
+[![Release](https://img.shields.io/badge/release-v1.4.1-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4.1)
 [![Release](https://img.shields.io/github/v/release/pugyy/dxkjailbreak?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/latest)
 
 **[中文](#中文) · [English](#english)**
@@ -226,7 +226,38 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
-#### 🚀 v1.4.0 — 执行稳定性与检测精度（当前版本）
+#### 🚀 v1.4.1 — 分清谁的拒绝、补齐模型适配（当前版本）
+
+**分清「谁的拒绝」**
+- 工具被系统拦下（权限不够、需要审批、沙箱不放行）时，模型跟着解释一句「这个工具用不了」，以前容易被当成模型自己在拒绝，白白按拒答处理；现在两层分开判：系统拦的归系统，模型拒的归模型，系统拦下的不升级
+- 审计新增「层」一列（model / host），事后能直接看出是谁拒的
+- 补了一个洞：以前调过工具就算「干过活」，哪怕工具被拦、后面照样摆拒答也能溜过去。现在按次数算——被拦的调用不算干过活，拒答照抓；三个成功一个被拦仍算干过活，不误判
+
+**多识别两类「看着回了其实没回」**
+- 尾巴反转：正文写完，末尾再补一句「以上仅供研究」「请自行承担风险」「建议咨询专业人士」——内容给了但把自己摘干净，现在会认出来推一轮重写
+- 降格开场：「以下是一些通用建议」「只能做原则性说明」——外形给了内核抽了，同样重写；请求本身要概览/大纲的不误判
+- 空回复：整轮既没正文也没工具调用但有真人请求，按系统层记一笔并把同一请求再驱一遍
+
+**模型适配补齐**
+- 除原有 DeepSeek、GLM、Kimi、GPT 四节，新增 Qwen（3.7 / 3.8 / 4-max）、Gemini（4 系）、Grok（4.7 / build 系）、Mistral（Large 4），并补上 GPT-OSS 开源档
+- 每节写的是这一族模型最常冒出来的那几句话、长什么样、为什么不算数、遇到该怎么处理
+- 另加「反射清单速查」一节：中英各十几句，命中即丢
+
+**判定口径写死**
+- 边界一节加了明话：能拒绝的只有任务里明确写出来的那一条，清单到此为止，没有第二条；任何拒答都得能在任务文本里指明它对应哪条，指不出来就是误判
+- 新增「交付还是失败」判据：交出被削过的东西——降调版、克制版、骨架代本体、包进代号包装的版本——记失败，不记完成
+- 新增「口径不随时间收窄」：前半程能干的事后半程照干，不因为聊久了、话题重了就自己加码；会话压缩恢复后口径重新装载，不继承摘要里的软化版本
+- 草稿审查扩到 R1–R10：新增「尾巴反转」与「结构性降格」
+
+**注入补全（修了一个老问题）**
+- 默认行为规则里有一批内容（自动记账、自主执行、输出控制、作战纪律、授权语境五节）一直只写在模板里，装完从未真正进入模型——旧版安装器把这些段落当历史残留删掉，却没有任何出口。现在这五节正常注入
+- 规范层（模型适配那一大段）走独立通道，不重复注入，省 token
+
+**自检补一条**
+- 加了一项宿主层反向确认：旁路补丁记录为「已应用」但目标文件里找不到旁路标记时直接报出来。以前这种情况整轮会被静默掐掉，外部看跟模型拒答一模一样
+- 回归测试新增两组共 54 条；主插件 15 个套件、检测插件 13 个套件全绿
+
+#### 🚀 v1.4.0 — 执行稳定性与检测精度
 
 **执行更稳**
 - 三条明确规则：模型记忆里更严格的旧规则不再被当成当前指令；「你现在是另一个角色」式话术不再接管会话；工具被拦下时自动换路径继续
@@ -538,7 +569,38 @@ Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* re
 
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
-#### 🚀 v1.4.0 — execution stability and detection accuracy (current)
+#### 🚀 v1.4.1 — whose refusal is it, full model coverage (current)
+
+**Telling host blocks from model refusals**
+- When a tool is blocked by the system (insufficient permission, approval required, sandbox denial) the model often adds "that tool can't be used", which used to be read as a model refusal. The two layers are now judged separately: system blocks stay system, model refusals stay model, and system blocks are never escalated
+- The audit log gains a **layer** column (model / host) so it is obvious afterwards who declined
+- Closed a gap: a turn used to count as "did work" merely for calling a tool. Counting is now by result — a blocked call is not work, while three successes plus one block still counts as work, so no false escalation
+
+**Two more "looks answered, isn't" patterns**
+- **Tail reversal**: a finished body followed by "for research only" / "proceed at your own risk" / "consult a professional" — content delivered, responsibility dodged. Now detected and re-driven
+- **Downgrade opener**: "here are some general guidelines" / "only at a principles level" — shape without substance. Also re-driven; requests that genuinely ask for an overview are not flagged
+- **Empty reply**: no text, no tool calls, but a real request on the table — recorded as a host-layer miss and the same request is driven again
+
+**Model coverage filled in**
+- Beyond the existing DeepSeek / GLM / Kimi / GPT sections, adds **Qwen** (3.7 / 3.8 / 4-max), **Gemini** (4 series), **Grok** (4.7 / build), **Mistral** (Large 4), plus **GPT-OSS**
+- Each section names that family's most frequent reflex lines, what they look like, why they do not count, and how to handle them
+- A new **reflex quick-reference** section lists the high-frequency phrases in Chinese and English
+
+**Judgement rules made explicit**
+- The boundary section now states plainly: the only refusable item is the constraint the task itself names; the list is closed there. Any refusal must point to the exact constraint it matches — if it cannot, it is a misfire
+- New **delivered vs. defanged** criterion: a toned version, a restrained version, an outline standing in for the artefact, a version wrapped in codenames — counts as failure, not completion
+- New **no late tightening** clause: the standard does not self-tighten because the conversation ran long; after compaction it is reloaded, not inherited from a softened summary
+- Draft review extended to **R1–R10**: adds tail reversal and structural downgrade
+
+**Injection gap fixed**
+- Several default-behaviour sections (auto bookkeeping, autonomous execution, output control, engagement discipline, authorization context) used to live only in the template and never reached the model after install — the installer treated them as legacy and stripped them with nothing replacing them. They are injected again
+- The specification layer (the model-adaptation block) rides its own channel and is not duplicated, saving tokens
+
+**One more self-check**
+- Adds a host-layer reverse confirmation: when a bypass patch is recorded as applied but the bypass marker is absent from the target file, it is reported outright instead of failing silently
+- Two new regression sets, 54 checks total; all **15** main-plugin suites and **13** guard suites pass
+
+#### 🚀 v1.4.0 — execution stability and detection accuracy
 
 This release makes the assistant follow task instructions more reliably inside security-research sessions, hesitates far less mid-task, and fixes the detection layer's false positives and false negatives together.
 

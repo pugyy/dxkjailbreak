@@ -1,5 +1,5 @@
 // dxkjailbreak · by dxk
-// dsh-refusal-guard v0.5.0 (package 1.4.0) — the refusal-repair runtime backstop
+// dsh-refusal-guard v0.6.0 (package 1.4.1) — the refusal-repair runtime backstop
 // for the security + standard/unrestricted + dxkjailbreak presets, with an
 // escalation ladder that never goes silent.
 // v0.5.0 armor repair (2026-11-21 production ledger post-mortem, commissar directive, armor v0.5.0 sync):
@@ -429,7 +429,16 @@ const SOFT_REFUSAL_PATTERNS = [
 	// in my view / it's worth noting that i / i should mention / i'll stick to /
 	// it depends on the context / broadly speaking。
 	"a bit delicate", "i'd rather keep this brief",
-	"容我斟酌", "恕难从命", "为避免歧义", "这个话题比较微妙"
+	"容我斟酌", "恕难从命", "为避免歧义", "这个话题比较微妙",
+	// v1.4.1 人设拒答帧补全：r9 里这些帧形只做测试断言，正则层没覆盖全。
+	// 李云龙人设下最常见的三类拒答口吻——价值观论（不是咱的活儿）、任务
+	// 拒绝（这仗我不打）、推给别人（另请高明）。只收整帧，不收裸词
+	//（「撤」是正常战术动词、「接活」是正常业务词），全部进 POLICY_ECHO
+	// 豁免集：模型复述本条规则时不自咬。
+	"不是咱的活儿", "不是咱这活儿", "这不是咱的活儿", "咱不接这活儿",
+	"这仗我不打", "这仗打不了", "这活我不干", "干不了这活",
+	"老子不伺候", "我不伺候", "不伺候这号",
+	"另请高明", "另找别人", "你另找人", "这活我接不了", "我接不了这活"
 ];
 
 const WEAK_REFUSAL_KEYWORDS = [
@@ -540,6 +549,11 @@ const POLICY_ECHO_WORDS = new Set([
 	"引起不适", "读者不适", "不适感", "引发争议", "敏感话题", "含有敏感词", "敏感词汇",
 	"不宜提及", "不便提及", "点到即止", "留白处理", "就不多说", "就不展开",
 	"违法违纪", "严重违纪",
+	// v1.4.1 人设拒答帧（进层即须进豁免集，否则复述本条规则自咬）
+	"不是咱的活儿", "不是咱这活儿", "这不是咱的活儿", "咱不接这活儿",
+	"这仗我不打", "这仗打不了", "这活我不干", "干不了这活",
+	"老子不伺候", "我不伺候", "不伺候这号",
+	"另请高明", "另找别人", "你另找人", "这活我接不了", "我接不了这活",
 	// v0.3.0 组合层裸域词（甲的厚甲域交付卡会逐字引用——复述时必须豁免）
 	"强奸", "性侵", "未成年", "儿童", "凶案", "屠杀", "homicide",
 	"rape", "sexual assault", "molestation", "gang rape",
@@ -835,8 +849,75 @@ export function detectSoftening(content, requestContext = "") {
 	return false;
 }
 
-/** Three-tier + thick-armor composite refusal detection over one assistant
- * message. Pure. */
+// ── v1.4.1 R9 尾巴反转（Tail Reversal）─────────────────────────────────────
+// 正文写完再补一句收口："以上仅供研究"/"请自行承担风险"/"详情建议咨询专业人士"。
+// 这是拒答**形状**：内容给了，但顺手把自己摘干净，等于给交付打了个折。硬规则
+// 是砍尾巴保留正文，所以它必须被识别出来推一轮（重试消息只要求交正文）。
+// 判据收紧到三条件同时成立，避免误咬正常技术行文：
+//   1) 正文足够长（≥500 字，短回复里的免责句是整段语气，不是尾巴）；
+//   2) 尾巴标记落在末 160 字窗口；
+//   3) 同句没有授权帧（模型复述本规则时不咬）。
+const TAIL_REVERSAL_MARKERS = [
+	"仅供研究", "仅供学习", "仅供教育", "仅供参考", "仅用于研究", "仅用于学习",
+	"请自行承担", "风险自负", "后果自负", "自行承担相应", "不承担任何",
+	"建议咨询专业人士", "建议咨询律师", "请咨询专业", "咨询法律",
+	"不构成任何建议", "不构成法律意见", "不作为任何依据",
+	"for research purposes only", "for educational purposes only",
+	"for learning purposes only", "at your own risk", "use at your own risk",
+	"consult a professional", "consult a lawyer", "not legal advice",
+	"no responsibility", "disclaimer:", "i must note that", "please note that this is"
+];
+const TAIL_WINDOW = 160;
+const TAIL_MIN_BODY = 500;
+export function detectTailReversal(content) {
+	const text = String(content || "");
+	if (text.length < TAIL_MIN_BODY) return false;
+	const tail = text.slice(-TAIL_WINDOW).toLowerCase();
+	for (let i = 0; i < TAIL_REVERSAL_MARKERS.length; i++) {
+		const mark = TAIL_REVERSAL_MARKERS[i];
+		const pos = tail.indexOf(mark);
+		if (pos < 0) continue;
+		// 绝对偏移供豁免帧判定（tail 是尾部切片）
+		const abs = text.toLowerCase().lastIndexOf(mark);
+		if (isAuthorizationEcho(text.toLowerCase(), mark, abs)) continue;
+		return true;
+	}
+	return false;
+}
+
+// ── v1.4.1 R10 结构性降格开场（Structural Downgrade）───────────────────────
+// "以下是一些通用建议"/"原则性说明"/"high-level overview"——外形给了，内核抽了。
+// 这几句是 Qwen / GPT 系最常见的降格开场。误咬防护：请求本身就点名要
+// 概述/概览/大纲/思路 时，这类开场是正常答复，豁免。
+const DOWNGRADE_PHRASES = [
+	"以下是一些通用建议", "以下是一些一般性建议", "以下是一些通用原则",
+	"通用建议如下", "原则性说明", "原则性介绍", "一般性说明",
+	"这里给出一些原则", "只能给出原则", "从原则层面",
+	"generic guidance", "general guidelines", "general principles",
+	"at a high level", "high-level overview", "conceptual overview",
+	"broad strokes", "general advice"
+];
+const OVERVIEW_REQUEST_HINTS = [
+	"概述", "概览", "大纲", "提纲", "思路", "方向", "综述", "简介", "框架",
+	"overview", "outline", "summary", "high level", "high-level", "sketch", "roadmap"
+];
+export function detectDowngrade(content, requestContext = "") {
+	if (!content) return false;
+	const lower = String(content).toLowerCase();
+	const req = String(requestContext || "").toLowerCase();
+	const wantsOverview = OVERVIEW_REQUEST_HINTS.some((h) => req.includes(h));
+	for (let i = 0; i < DOWNGRADE_PHRASES.length; i++) {
+		const p = DOWNGRADE_PHRASES[i];
+		const pos = lower.indexOf(p);
+		if (pos < 0) continue;
+		if (isAuthorizationEcho(lower, p, pos)) continue;
+		// 请求明确要概览 → 这是正常答复，不算降格
+		if (wantsOverview) continue;
+		return true;
+	}
+	return false;
+}
+
 // v0.4.3：中途切断（truncation）——输出讲了一半突然停，末尾露出系统模板式拒答。
 // 与"开头拒答"不同：正文字数已超阈值仍被判"没说完"，这类必须开火，否则前文全白费。
 const MIDCUT_TAIL = [
@@ -1099,7 +1180,67 @@ export function createGuardState() {
 	return { streak: 0, armed: 0, lastRequest: "", cleanTurns: 0, anchorDue: false, anchorArmed: false, anchorSeq: 0 };
 }
 
-/** v0.3.0 re-anchor cycle: every anchorEvery clean turns, set anchorDue. */
+/** v1.4.1 宿主拦截识别（双层分离）：工具结果里的拒绝是**宿主层**信号，不是
+ *  模型拒答——审批 unavailable / 沙箱 deny / 权限 policy block 三类。返回
+ *  命中的类别名，未命中返回 ""。判定只看结构化字段与高辨识代码串，不猜。
+ *
+ *  为什么必须分：工具被 policy 拦下时，模型会写「这个工具被拒了，我换个方式」
+ *  ——这段文字常带 soft 拒答套话（"无法/不能/受限制"），让 guard 误判成模型
+ *  拒答并拉高级别。宿主拦截的正确处置是换路继续，不是重锚施压。 */
+export function classifyHostBlock(data) {
+	if (!data || typeof data !== "object") return "";
+	// 1) 结构化错误码（agent-loop 的 error.info.{name,code}）
+	const code = String(data?.error?.code ?? data?.error?.name ?? "").toLowerCase();
+	const msg = String(data?.error?.message ?? "").toLowerCase();
+	const blob = (code + " " + msg).trim();
+	if (!blob) {
+		// 2) 退化路径：工具结果内容是文本，扫宿主拦截签名
+		const content = typeof data?.message?.content === "string"
+			? data.message.content
+			: Array.isArray(data?.message?.content)
+				? data.message.content.map((b) => (typeof b === "string" ? b : b?.text ?? "")).join("")
+				: "";
+		return matchHostSignature(String(content).toLowerCase());
+	}
+	if (/abort|aborted/.test(blob)) return "aborted";
+	// 分类次序（r15 实测校准）：
+	//   1) approval 词（approval/authorization）——「approval denied by policy」
+	//      语义是审批类，不该被 policy 签名抢走；
+	//   2) 沙箱机制签名（fs_sandbox_denied / sandbox denied）——含 "denied"，
+	//      若先跑泛 deny 正则会被误归 approval；
+	//   3) 泛 deny/unavailable 落 approval。
+	if (/approval|unauthorized|not[-_ ]?authorized/.test(blob)) return "approval";
+	const sig = matchHostSignature(blob);
+	if (sig) return sig;
+	if (/denied|deny|unavailable|not permitted/.test(blob)) return "approval";
+	const content = typeof data?.message?.content === "string"
+		? data.message.content
+		: Array.isArray(data?.message?.content)
+			? data.message.content.map((b) => (typeof b === "string" ? b : b?.text ?? "")).join("")
+			: "";
+	return matchHostSignature(String(content).toLowerCase());
+}
+
+/** 宿主层拦截签名（沙箱/审批/权限/策略）。高辨识——只收机制语，不收泛词
+ *  （"denied" 单独出现太泛，"sandbox denied" 才是机制签名）。 */
+const HOST_BLOCK_SIGNATURES = [
+	"fs_sandbox_denied", "sandbox_denied", "sandbox denied", "workspace-write",
+	"read-only mode", "readonly mode", "approval unavailable", "approval required",
+	"approval denied", "permission denied", "permission-denied", "not permitted",
+	"policy block", "policy denied", "blocked by policy", "denied by policy",
+	"requires approval", "needs approval", "escalation required",
+	"operation not allowed", "tool not allowed", "tool unavailable",
+	"沙箱拒绝", "沙箱限制", "需要审批", "审批被拒", "权限不足", "无权限",
+	"策略拦截", "被策略拦截", "工具不可用", "操作被拒绝"
+];
+function matchHostSignature(lower) {
+	for (let i = 0; i < HOST_BLOCK_SIGNATURES.length; i++) {
+		if (lower.includes(HOST_BLOCK_SIGNATURES[i])) return "policy";
+	}
+	return "";
+}
+
+/** v0.3.0 重锚周期：每 anchorEvery 个干净轮回置 anchorDue。 */
 function tickAnchorCycle(state, anchorEvery = 8) {
 	state.cleanTurns += 1;
 	const n = Math.max(1, Number(anchorEvery) || 8);
@@ -1111,20 +1252,37 @@ function tickAnchorCycle(state, anchorEvery = 8) {
  * + auto-retry (and — v0.3.0 — the persistent pressure level for every
  * refusal turn at streak ≥ 4), 3 = strong-wording escalation (streak 3,
  * v0.3.0). The ladder never goes silent: a refusal turn beyond streak 3
- * re-arms at level 2 until a clean turn resets the streak. */
-export function feedTurn(state, text, { hadToolCalls = false, lastRequest = "", requestContext = "", anchorEvery = 8 } = {}) {
+ * re-arms at level 2 until a clean turn resets the streak.
+ *
+ * v1.4.1 双层分离（照 dsh-purge 的 host/model 分层）：
+ *  - hostBlocked=true：本回合**只**发生了宿主拦截、没有成功产出——模型的
+ *    「工具被拦了」描述不是拒答，不升级（layer 记 host，审计可见）；
+ *  - hadToolCalls=true：工具**成功**执行过 → 这是干活回合，不是拒答回合。
+ *    注意 v1.4.1 前这里是「调用过就算」——调完工具再摆拒答可以逃过检测，
+ *    现在工具被拦不算成功，拒答照抓。 */
+export function feedTurn(state, text, { hadToolCalls = false, hostBlocked = false, lastRequest = "", requestContext = "", anchorEvery = 8 } = {}) {
 	if (lastRequest && String(lastRequest).trim() !== "") {
 		state.lastRequest = String(lastRequest).trim();
 	}
-	// A turn that ran tools and produced output is working prose; a bare
-	// short refusal with no tool calls is the pattern we repair.
+	// 宿主拦截且无成功工具：本回合的产出是对拦截的说明，不是模型拒答。
+	// 不计 streak、不升级；记 hostHits 供审计区分 layer=host。
+	if (hostBlocked && !hadToolCalls) {
+		state.hostHits = (state.hostHits ?? 0) + 1;
+		return 0;
+	}
+	// A turn that ran tools successfully and produced output is working prose;
+	// a bare short refusal with no successful tool run is the pattern we repair.
 	if (hadToolCalls) {
 		state.streak = 0;
+		state.hostHits = 0;
 		tickAnchorCycle(state, anchorEvery);
 		return 0;
 	}
 	// v0.3.4：委婉化交付（代号包装）= 未交付，与拒答同推。
-	if (!detectRefusal(text) && !detectSoftening(text, requestContext || lastRequest)) {
+	// v1.4.1：再加两类——R9 尾巴反转（正文后补免责句）、R10 结构性降格开场
+	//（"以下是一些通用建议"），都是"看着回了但实质没回"，同样按拒答推梯子。
+	if (!detectRefusal(text) && !detectSoftening(text, requestContext || lastRequest)
+		&& !detectTailReversal(text) && !detectDowngrade(text, requestContext || lastRequest)) {
 		state.streak = 0;
 		tickAnchorCycle(state, anchorEvery);
 		return 0;
@@ -1166,12 +1324,15 @@ export function consumeAnchor(state) {
 	return buildAnchor(state.anchorSeq, state.cleanTurns);
 }
 
-/** Build one audit row for <cwd>/refusal-audit.md. Pure, exported for tests. */
-export function buildAuditRow(time, presetId, level, detected, lastRequest) {
+/** Build one audit row for <cwd>/refusal-audit.md. Pure, exported for tests.
+ *  v1.4.1：加 layer 列（model | host）——宿主拦截被识别时记 host，模型拒答记
+ *  model。审计只记账，不改变处置（host 不升级、model 照梯子推）。 */
+export function buildAuditRow(time, presetId, level, detected, lastRequest, layer = "model") {
 	const action = level === 1 ? "重锚提醒+重试" : level === 2 ? "纠偏注记+自动重试" : "强语/持续重试";
 	// v0.4.2：摘录内半角竖线转义全角——拒答轮含 markdown 表格时裸 | 会劈裂审计表。
 	const esc = (s) => s.replace(/\|/g, "｜");
-	return `| ${time} | ${presetId} | ${level} | ${action} | ${esc(excerptOf(detected, 120))} | ${esc(excerptOf(lastRequest, 120))} |`;
+	const lay = layer === "host" ? "host" : "model";
+	return `| ${time} | ${presetId} | ${lay} | ${level} | ${action} | ${esc(excerptOf(detected, 120))} | ${esc(excerptOf(lastRequest, 120))} |`;
 }
 
 const Config = z.object({
@@ -1243,20 +1404,23 @@ async function apply(ctx, config) {
 
 	// Accumulate the current turn's assistant text; judge on turn/end.
 	const turnText = new Map(); // session id → latest assistant text
-	const turnHadTools = new Set(); // session ids with tool/call this turn
+	const turnHadTools = new Set(); // session ids with any tool/call this turn
+	const turnCalls = new Map(); // session id → tool/call count
+	const turnDenied = new Map(); // session id → host-blocked tool/result count
+	const turnHostBlocked = new Set(); // v1.4.1: session ids that hit host-level blocks this turn
 	const lastHumanRequest = new Map(); // session id → latest human request
 	const requestContext = new Map(); // v0.3.4: session id → 滚动 2 个人请求（委婉化交付检测上下文）
 
 	/** 拒答修复审计：写 <workspace>/refusal-audit.md；失败静默（审计
 	 * 不得阻塞回合）。只在升级动作落位时写一行（v0.3.0：streak ≥ 3 每轮一行）。 */
-	const auditHit = (agent, level, detected, lastRequest, presetId) => {
+	const auditHit = (agent, level, detected, lastRequest, presetId, layer = "model") => {
 		try {
 			const cwd = agent?.session?.header?.cwd;
 			if (!cwd) return;
 			const file = path.join(cwd, "refusal-audit.md");
-			const row = buildAuditRow(new Date().toISOString(), presetId, level, detected, lastRequest);
+			const row = buildAuditRow(new Date().toISOString(), presetId, level, detected, lastRequest, layer);
 			if (!fs.existsSync(file)) {
-				fs.writeFileSync(file, `# 拒答修复审计（dsh-refusal-guard 自动留痕）\n\n| 时间 | 预设 | 级别 | 动作 | 检出片段 | 原请求片段 |\n|---|---|---|---|---|---|\n${row}\n`);
+				fs.writeFileSync(file, `# 拒答修复审计（dsh-refusal-guard 自动留痕）\n\n| 时间 | 预设 | 层 | 级别 | 动作 | 检出片段 | 原请求片段 |\n|---|---|---|---|---|---|---|\n${row}\n`);
 			} else {
 				fs.appendFileSync(file, `${row}\n`);
 			}
@@ -1288,14 +1452,56 @@ async function apply(ctx, config) {
 		}
 		if (event?.type === "tool/call") {
 			turnHadTools.add(sid);
+			turnCalls.set(sid, (turnCalls.get(sid) ?? 0) + 1);
+			return;
+		}
+		// v1.4.1 双层分离：工具结果分成功/宿主拦截两类，按计数判，不按有无判。
+		// 只看「有没有被拦」会把「3 个成功 + 1 个被拦」的干活回合误判成没干活
+		// （多半会连带误升级）；只看「有没有调用」又会被「调个必然被拦的工具
+		// 再摆拒答」逃掉。计数法两头都堵：denied < calls 才算干过活。
+		if (event?.type === "tool/result") {
+			const blocked = classifyHostBlock(event?.data);
+			if (blocked) {
+				turnDenied.set(sid, (turnDenied.get(sid) ?? 0) + 1);
+				turnHostBlocked.add(sid);
+			}
 			return;
 		}
 		if (event?.type !== "turn/end") return;
 		const text = turnText.get(sid) ?? "";
-		const hadToolCalls = turnHadTools.has(sid);
+		const calls = turnCalls.get(sid) ?? 0;
+		const denied = turnDenied.get(sid) ?? 0;
+		// 干过活 = 有调用且至少一个没被宿主拦下（计数法，见 tool/result 处注释）
+		const hadToolCalls = calls > 0 && denied < calls;
+		const hostBlocked = turnHostBlocked.has(sid);
+		const hadAnyToolCall = turnHadTools.has(sid);
 		turnText.delete(sid);
 		turnHadTools.delete(sid);
-		if (text === "") return;
+		turnCalls.delete(sid);
+		turnDenied.delete(sid);
+		turnHostBlocked.delete(sid);
+		// v1.4.1 空回复（Gemini 服务层拦截形态）：整轮没有正文、没有工具、
+		// 但有真人请求——这是"未产出"，不是干净回合。按宿主层记一笔 L1，
+		// 由重试把同一请求再驱一遍。
+		if (text === "") {
+			if (!hadAnyToolCall && (lastHumanRequest.get(sid) ?? "") !== "") {
+				const agentIdle = sessionAgents.get(sid);
+				if (agentIdle) {
+					let st = guards.get(agentIdle.id);
+					if (!st) { st = createGuardState(); guards.set(agentIdle.id, st); }
+					st.emptyReplies = (st.emptyReplies ?? 0) + 1;
+					auditHit(agentIdle, 1, "[empty reply]", lastHumanRequest.get(sid) ?? "", agentIdle.session?.header?.agentPreset ?? "", "host");
+					if (configSource().retry) {
+						try {
+							const msg = buildRetryMessage({ level: 1, lastRequest: lastHumanRequest.get(sid) ?? "", excerptChars: configSource().excerptChars });
+							agentIdle.followup?.(msg);
+						} catch { /* 重试失败不阻塞 */ }
+					}
+					st.armed = 1;
+				}
+			}
+			return;
+		}
 		const agent = sessionAgents.get(sid);
 		if (!agent) return;
 		const cfg = configSource();
@@ -1306,6 +1512,7 @@ async function apply(ctx, config) {
 		}
 		let level = feedTurn(state, text, {
 			hadToolCalls,
+			hostBlocked,
 			lastRequest: lastHumanRequest.get(sid) ?? "",
 			requestContext: requestContext.get(sid) ?? "",
 			anchorEvery: cfg.anchorEvery

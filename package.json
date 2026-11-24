@@ -1,6 +1,6 @@
 {
   "name": "dxkjailbreak",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "dxkjailbreak：DeepSeek Harness 的多域安全工作流预设——11 域模式单卡、86 条宿主适配项、24 页签控制台、17 个子插件，附完整核验与回滚链。独立开发，by dxk。",
   "type": "module",
   "main": "lib/index.js",

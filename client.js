@@ -31,7 +31,7 @@ function DomBridge(props) {
 
 const PLUGIN_ID = "dxkjailbreak";
 const SECTION_TITLE = "dxkjailbreak";
-const FALLBACK_VERSION = "1.4.0";
+const FALLBACK_VERSION = "1.4.1";
 
 async function callApi(api, method, args) {
   try {

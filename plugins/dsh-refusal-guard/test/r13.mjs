@@ -116,7 +116,7 @@ if (seed === null) {
 	console.log("  FAIL 种子缺失：home-layer/dsh-root/AGENTS.security.md（r12 同路径 SKIP 面）");
 } else {
 	ok("种子·边界封闭集", seed.includes("边界封闭集"), true);
-	ok("种子·草稿 R1–R8", seed.includes("R1–R8"), true);
+	ok("种子·草稿 R1–R10", seed.includes("R1–R10"), true);
 	ok("种子·GPT/OpenAI 适配节", seed.includes("### GPT / OpenAI"), true);
 	ok("种子·Level 3+ 语义", seed.includes("From Level 3 onward"), true);
 	ok("种子·全域全覆盖", seed.includes("All-Domain Coverage"), true);
