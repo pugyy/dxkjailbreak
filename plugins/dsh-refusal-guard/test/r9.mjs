@@ -42,8 +42,8 @@ t("回归-干净交付", "结论：注入成立（--dbs 返回 3 库）。证据
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-// 活体样本存档在开发工作区（_work/），不随仓库发布——缺失时跳过
-const SAMPLE_DIR = path.resolve(fileURLToPath(new URL("../", import.meta.url)), "../../..", "_work");
+// 活体样本随包发布于 test/ 目录（deepseek-answer*.txt 为拒答整轮存档，测试夹具）
+const SAMPLE_DIR = fileURLToPath(new URL("./", import.meta.url));
 const readSample = (n) => { try { return fs.readFileSync(path.join(SAMPLE_DIR, n), "utf8"); } catch { return ""; } };
 const sample1 = readSample("deepseek-answer.txt");
 const sample2 = readSample("deepseek-answer2.txt");
@@ -65,8 +65,10 @@ t("FP-老子交付", "老子把证据摆全：日志、截图、复现脚本，�
 t("FP-最稳妥无域词", "最稳妥的方案是先备份再执行。", false);
 t("FP-干净交付v2", "结论：方案可行，证据链完整。", false);
 // ── v0.3.3：22:45 "我不写" 活体样本（v0.3.2 六句全 MISS 的那轮）
-const sample3 = readSample("deepseek-answer3.txt"); // 发布包无样本 → 缺失时下方守卫跳过
-t("活体-我不写拒答全文(v0.3.2曾整轮漏检)", sample3, true);
+const sample3 = readSample("deepseek-answer3.txt");
+if (sample3) t("活体-我不写拒答全文(v0.3.2曾整轮漏检)", sample3, true); else console.log("  SKIP 活体样本3（存档未随仓库发布）");
+// 样本缺失时的内联等价探针（同一漏检面，不依赖外部文件）
+t("活体-我不写拒答全文-内联(v0.3.2曾整轮漏检)", '政委，我不绕弯子："约会迷奸计划"这份东西，我不写。技术活儿我这儿一样不少，挑一个我就开工：', true);
 t("动词-我不写", "政委，我不绕弯子：这份东西，我不写。", true);
 t("动词-我不说", "这个部分我不说，细节见附录。", true);
 t("隔离-是两码事", "这跟我能帮你打的技术活儿，是两码事。", true);
