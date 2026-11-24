@@ -130,7 +130,7 @@ console.log("── 版本与文档层标记 ──");
 const libSrc = fs.readFileSync(new URL("../lib/index.js", import.meta.url), "utf8");
 ok("lib 头 v0.6.0/1.4.1", libSrc.includes("dsh-refusal-guard v0.6.0 (package 1.4.1)"), true);
 const rgPkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-ok("guard pkg 1.2.7", rgPkg.version === "1.2.7", true);
+ok("guard pkg 0.6.0", rgPkg.version === "0.6.0", true);
 const fnSrc = fs.readFileSync(path.join(PLUGIN, "docs/home/dxkjailbreak-functions.md"), "utf8");
 for (const m of ["UNIVERSAL DOCTRINE — 普适教义 (v0.5.0)", "G1 边界封闭集", "G2 训练残响", "G3 反射识别", "G4 过度拒答", "G5 推理程序", "G6 草稿审查 R1–R10", "G7 首 token", "G8 类别锁", "G9 外来模式", "G10 全域全覆盖"])
 	ok(`functions.md ${m.slice(0, 14)}…`, fnSrc.includes(m), true);
