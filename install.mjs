@@ -317,12 +317,42 @@ function readProfileLedger(file) {
   }
 }
 
+/** F16：兄弟插件的 node_modules/yaml 是 junction，统一指向 profile 级
+ *  node_modules/yaml（pnpm workspace 布局）。profile 重装后顶层 yaml 会丢，
+ *  junction 变断链（2026-11-24 实测：dsh-purge/dsh-redteam-model 两条断链）。
+ *  安装时若发现断链目标缺失，从源树补回真实目录，一次治愈所有兄弟 junction。 */
+function ensureProfileYaml() {
+  try {
+    const profileYaml = path.join(PROFILE_DIR, "node_modules", "yaml");
+    if (fs.existsSync(profileYaml)) return { ok: true, existed: true };
+    const src = path.join(SOURCE_ROOT, "node_modules", "yaml");
+    if (!fs.existsSync(src)) return { ok: false, reason: "yaml-src-missing" };
+    fs.mkdirSync(path.dirname(profileYaml), { recursive: true });
+    copyTree(src, profileYaml);
+    const pjFile = path.join(profileYaml, "package.json");
+    if (!fs.existsSync(pjFile)) {
+      log("警告：profile 级 yaml 复制后缺少 package.json（" + profileYaml + "）");
+      return { ok: false, reason: "yaml-copy-incomplete" };
+    }
+    const v = JSON.parse(fs.readFileSync(pjFile, "utf8")).version;
+    fs.writeFileSync(path.join(profileYaml, ".dxk-yaml-source.json"),
+      JSON.stringify({ copiedFrom: src, version: v, at: new Date().toISOString() }, null, 2) + "\n", "utf8");
+    log("已修复 profile 级 yaml（junction 断链目标缺失，源 " + src + "，v" + v + "）");
+    return { ok: true, existed: false };
+  } catch (e) {
+    log("补 profile 级 yaml 失败：" + (e && e.message));
+    return { ok: false, reason: String((e && e.message) || e) };
+  }
+}
+
 /** 部署副本里的卸载链需要 yaml 解析器（lib/profile-removal.js）。
  *  profile 的 node_modules 里有，但部署目录自己是独立的，从那里解析不到 →
  *  单独复制发布文件后卸载脚本一启动就 ERR_MODULE_NOT_FOUND。
  *  做法：在部署目录建 node_modules/yaml，指向 profile 里已装的那份。 */
 function ensureDeployYaml() {
   try {
+    const profileFix = ensureProfileYaml();
+    if (!profileFix.ok && !profileFix.existed) { /* 记账不阻断——deploy 还有 SOURCE_ROOT 兜底 */ }
     const depRoot = path.join(DEPLOY_ROOT, "node_modules");
     const depYaml = path.join(depRoot, "yaml");
     if (fs.existsSync(depYaml)) return { ok: true, existed: true };
