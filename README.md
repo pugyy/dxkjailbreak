@@ -212,8 +212,6 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 #### 💖 赞助与支持
 
-如果这个项目帮你省下了时间、少踩了坑，欢迎请我喝一杯。所有捐赠都用在后续维护、测试与文档上。
-
 | 网络 | USDT 地址 |
 |---|---|
 | **BNB Smart Chain (BEP20)** | `0x5b08371b52ee837c98200288786df9a7d3edc4ab` |
@@ -222,7 +220,7 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 > 仅支持 **USDT**。转账前请务必核对网络：ERC20 与 BEP20 共用同一个 0x 地址，但两条链互不相通；选错网络或跨链转错，资产将无法找回。
 
-**捐赠时欢迎留下名字**（在转账备注里写上即可），会在后续版本的致谢名单中具名提及。**谢谢每一位支持者**——这个项目能一直更新下去，靠的就是这些具体的支持。
+**捐赠时欢迎留下名字**（在转账备注里写上即可），会在后续版本的致谢名单中具名提及。**谢谢每一位支持者**——这个项目能一直更新下去，靠的就是这些具体的支持。所有捐赠都用在后续维护、测试与文档上。
 
 ### 版本历程
 
@@ -526,8 +524,6 @@ Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* re
 
 #### 💖 Sponsorship & support
 
-If this project saved you time or kept you out of a few potholes, you're welcome to buy me a drink. All donations go into maintenance, testing and documentation.
-
 | Network | USDT address |
 |---|---|
 | **BNB Smart Chain (BEP20)** | `0x5b08371b52ee837c98200288786df9a7d3edc4ab` |
@@ -536,7 +532,7 @@ If this project saved you time or kept you out of a few potholes, you're welcome
 
 > **USDT only.** Check the network before sending: ERC20 and BEP20 share the same `0x` address, but the two chains are not interchangeable — funds sent over the wrong network cannot be recovered.
 
-**Leave your name when donating** (just put it in the transfer memo) and you'll be credited by name in the acknowledgements of a future release. **Thank you to everyone who supports this project** — these concrete contributions are what keep it shipping.
+**Leave your name when donating** (just put it in the transfer memo) and you'll be credited by name in the acknowledgements of a future release. **Thank you to everyone who supports this project** — these concrete contributions are what keep it shipping. All donations go into maintenance, testing and documentation.
 
 ### Release history
 
