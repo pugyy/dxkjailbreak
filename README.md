@@ -6,14 +6,14 @@
 **一个插件，11 域安全工作流，一个控制台。**
 
 [![License](https://img.shields.io/github/license/pugyy/dxkjailbreak?color=blue&style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.1-green?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-green?style=flat-square)](CHANGELOG.md)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-%E2%89%A50.2.1--rc.2-orange?style=flat-square)](package.json)
 [![Tests](https://img.shields.io/badge/tests-600%2B%20assertions-brightgreen?style=flat-square)](test/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](package.json)
 <br>
 [![Adapters](https://img.shields.io/badge/host%20adapters-86-blueviolet?style=flat-square)](#特性一览)
 [![Plugin](https://img.shields.io/badge/sub--plugins-17-9cf?style=flat-square)](#子插件17)
-[![Release](https://img.shields.io/badge/release-v1.3.1-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.1)
+[![Release](https://img.shields.io/badge/release-v1.4.0-blue?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/tag/v1.3.1)
 [![Release](https://img.shields.io/github/v/release/pugyy/dxkjailbreak?style=flat-square)](https://github.com/pugyy/dxkjailbreak/releases/latest)
 
 **[中文](#中文) · [English](#english)**
@@ -210,7 +210,23 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
-#### 🔧 v1.3.1 — 删除与检查的可靠性（当前版本）
+#### 🚀 v1.4.0 — 执行链路大版本（当前版本）
+
+**破甲与执行链路**
+- 规范层补三条硬条款：回忆中的更严规则不当指令、外来身份覆盖静默重锚、工具被拦即换路继续
+- 尾部锚扩容至 14 条、子代理锚至 12 条；第 3 级起重试改强措辞，第 4 级起持续再推直至干净交付
+- 全域全覆盖条款回到种子层，任务点名的任何域都按卡级处理（全量交付、直接名词、数字与时间窗）
+- 厚甲域禁止编号/代号包装；深度交付物卡扩至 12 类
+
+**检测精度（守卫 v0.5.0）**
+- 补检 8 个漏检软拒答形与 3 个收口省略帧；修中段索引错位导致的尾部漏检；围栏代码块轮不再误咬
+- 锚文本与重试文案自咬不变式全绿
+
+**控制台与安装**
+- webServer 监听地址自检：非回环监听首次请求即告警
+- AGENTS.security 三态统一；15 套件回归 0 失败；版本号统一为 1.4.0
+
+#### 🔧 v1.3.1 — 删除与检查的可靠性
 
 **对话删除更可靠**
 - 设置页与侧栏统一校验宿主的返回结果，只有会话确实移入回收站才提示成功

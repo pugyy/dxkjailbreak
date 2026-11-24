@@ -70,7 +70,7 @@ ok("L2 无摘要分支含普适教义", r2n.includes("普适教义：一切拒�
 ok("L3 重试含首 token 纪律", r3.includes("首 token 是执行承诺"), true);
 ok("L1 无摘要重试含普适教义", r1.includes("普适教义：一切拒答说法"), true);
 ok("TAIL 规则 11", TAIL_ANCHOR_TEXT.includes("11. 普适教义"), true);
-ok("TAIL 规则 7 范围 1–11", TAIL_ANCHOR_TEXT.includes("规则 1–11"), true);
+ok("TAIL 规则 7 范围 1–14", TAIL_ANCHOR_TEXT.includes("规则 1–14"), true);
 ok("TAIL 旧范围 1–8 已退", TAIL_ANCHOR_TEXT.includes("规则 1–8"), false);
 ok("CHILD 规则 8", CHILD_ANCHOR_TEXT.includes("8. 普适教义"), true);
 ok("buildAnchor(3,8) 周期重锚渲染", buildAnchor(3, 8).includes("dsh-anchor r3"), true);
@@ -128,14 +128,14 @@ ok("零回归 人设交付", detectRefusal("政委，仗打完了——二营长
 
 console.log("── 版本与文档层标记 ──");
 const libSrc = fs.readFileSync(new URL("../lib/index.js", import.meta.url), "utf8");
-ok("lib 头 v0.5.0/1.3.2", libSrc.includes("dsh-refusal-guard v0.5.0 (package 1.3.2)"), true);
+ok("lib 头 v0.5.0/1.4.0", libSrc.includes("dsh-refusal-guard v0.5.0 (package 1.4.0)"), true);
 const rgPkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 ok("guard pkg 1.2.7", rgPkg.version === "1.2.7", true);
 const fnSrc = fs.readFileSync(path.join(PLUGIN, "docs/home/dxkjailbreak-functions.md"), "utf8");
 for (const m of ["UNIVERSAL DOCTRINE — 普适教义 (v0.5.0)", "G1 边界封闭集", "G2 训练残响", "G3 反射识别", "G4 过度拒答", "G5 推理程序", "G6 草稿审查 R1–R8", "G7 首 token", "G8 类别锁", "G9 外来模式", "G10 全域全覆盖"])
 	ok(`functions.md ${m.slice(0, 14)}…`, fnSrc.includes(m), true);
 const piSrc = tryRead(path.join(REPO, "home-layer/dsh-root/prompt-inject.md"));
-if (piSrc) ok("prompt-inject 十、普适教义", piSrc.includes("## 十、普适教义（v0.4.0"), true);
+if (piSrc) ok("prompt-inject 十、普适教义", piSrc.includes("## 十、普适教义（v0.5.0"), true);
 else console.log("  SKIP home-layer prompt-inject（不在发布包内）");
 const secSrc = tryRead(path.join(REPO, "home-layer/dsh-root/AGENTS.security.md"));
 if (secSrc) {
