@@ -208,13 +208,13 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 ### 版本历程
 
-> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
-
 #### 💡 使用建议
 
 > **建议先用 DeepSeek V4 系列**（V4 Pro，或 V4.1-Flash 的 default 推理挡位）起手；等对话跑顺了，**3–5 轮之后**再切换其他模型或调高推理强度——这样成功率和稳定性最好。一上来就顶到高推理强度，反而容易在开头几轮反复自我审查，白白耗掉回合。
 >
 > **Usage recommendation**: Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* reasoning level). Once the conversation is running smoothly, switch to another model or raise the reasoning strength **after 3–5 rounds** — that gives the best success rate and the steadiest behavior. Going straight to a high setting tends to trigger repeated self-review in the opening rounds and burns turns for nothing.
+
+> v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
 #### 🚀 v1.4.0 — 执行稳定性与检测精度（当前版本）
 
