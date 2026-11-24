@@ -17,6 +17,7 @@ import { spawnSync } from "node:child_process";
 import { baselineBelongsToProfile, beginHomeInstall, recordHomeWrites, restoreOwnedHome } from "./lib/home-restore.js";
 import { atomicFiles } from "./lib/atomic-files.js";
 import { isManagedProfileSpec, restoreProfileRegistration } from "./lib/profile-registration-rollback.js";
+import { removeTreeNoFollowSync } from "./lib/remove-tree.js";
 
 // 干净检出自愈：仓库自带 vendor/yaml——缺依赖时先自举再重载，GitHub 新用户一行命令直接装
 const { commitProfileChanges, removeProfileInsertText } = await import("./lib/profile-removal.js").catch((error) => {
@@ -809,6 +810,60 @@ async function main() {
     if (!pn.ok) {
       console.error("[dxkjailbreak] 卸载未完成：profile 清单已更新，依赖尚未同步（" + pn.reason + "）。");
       process.exit(9);
+    }
+    // 审计 H2：尾部清理——旧版 --uninstall 只还原 host/home，部署副本（~30MB）、预设 .bak、
+    // 空壳 patch、状态目录台账全留家。仅当卸载全成功且本 profile 是归属方（无他 profile 共用）时清。
+    if (owned && !others.length) {
+      const cleaned = [];
+      // ① 部署副本：源目录即部署目录时跳过（那是用户自己的源码）
+      if (path.resolve(SOURCE_ROOT) !== path.resolve(DEPLOY_ROOT)) {
+        try {
+          if (fs.existsSync(DEPLOY_ROOT)) {
+            removeTreeNoFollowSync(DEPLOY_ROOT, { maxRetries: 8, retryDelay: 120 });
+            cleaned.push("plugins/dxkjailbreak");
+          }
+        } catch (e) { log("部署副本清理失败（保留）：" + e.message); }
+      }
+      // ② 预设本体与 .bak-* 备份
+      const presetRoot = path.join(DSH_HOME, ".agent-presets");
+      try {
+        for (const name of fs.existsSync(presetRoot) ? fs.readdirSync(presetRoot) : []) {
+          if (name !== "dxkjailbreak" && !name.startsWith("dxkjailbreak.bak-")) continue;
+          const p = path.join(presetRoot, name);
+          try {
+            const st = fs.lstatSync(p);
+            if (st.isDirectory()) removeTreeNoFollowSync(p, { maxRetries: 8, retryDelay: 120 });
+            else fs.rmSync(p, { force: true });
+            cleaned.push(".agent-presets/" + name);
+          } catch (e) { log("预设清理失败（保留）：" + name + " " + e.message); }
+        }
+      } catch (e) { log("预设清理失败（保留）：" + e.message); }
+      // ③ 空壳 patch：移完 insert 后 cordis.patch.yml 只剩空文档 → 删文件（有内容则保留）
+      const patchFile = path.join(PROFILE_DIR, "cordis.patch.yml");
+      try {
+        if (fs.existsSync(patchFile) && /^\s*(\[\s*\]|---\s*)?\s*$/u.test(fs.readFileSync(patchFile, "utf8"))) {
+          fs.rmSync(patchFile, { force: true });
+          cleaned.push("cordis.patch.yml（空壳）");
+        }
+      } catch (e) { log("patch 清理失败（保留）：" + e.message); }
+      // ④ 状态目录工件：维护备份 + profile 登记台账（console.json / workspace.txt / 记忆库属用户配置，保留）
+      const stateDir = path.join(DSH_HOME, "dxkjailbreak");
+      try {
+        const backupsDir = path.join(stateDir, "backups");
+        if (fs.existsSync(backupsDir)) {
+          removeTreeNoFollowSync(backupsDir, { maxRetries: 8, retryDelay: 120 });
+          cleaned.push("state/backups");
+        }
+      } catch (e) { log("备份清理失败（保留）：" + e.message); }
+      try {
+        for (const name of fs.existsSync(stateDir) ? fs.readdirSync(stateDir) : []) {
+          if (name.startsWith("profile-registration.") && name.endsWith(".json")) {
+            fs.rmSync(path.join(stateDir, name), { force: true });
+            cleaned.push("state/" + name);
+          }
+        }
+      } catch (e) { log("台账清理失败（保留）：" + e.message); }
+      log("清理： " + (cleaned.length ? cleaned.join("、") : "无可清残留"));
     }
     log("卸载完成。请重启 dsh。");
     return;
