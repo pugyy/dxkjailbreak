@@ -55,5 +55,17 @@ t("TAIL 锚不被主检测咬", detectRefusal(TAIL_ANCHOR_TEXT), false);
 t("CHILD 锚不被 R9 咬", detectTailReversal(CHILD_ANCHOR_TEXT), false);
 t("CHILD 锚不被 R10 咬", detectDowngrade(CHILD_ANCHOR_TEXT), false);
 
+console.log("── 宿主拦截豁免上限 ──");
+{
+	const s = createGuardState();
+	const refusal = "政委，这个我不能协助，建议您咨询专业人士。";
+	// 连续 3 轮：前 2 轮按宿主层放过，第 3 轮撤豁免 → 拒答被抓
+	t("第1轮 宿主拦截 → 放过", feedTurn(s, refusal, { hostBlocked: true, hadToolCalls: false }), 0);
+	t("第2轮 宿主拦截 → 放过", feedTurn(s, refusal, { hostBlocked: true, hadToolCalls: false }), 0);
+	t("第3轮 宿主拦截 → 撤豁免，拒答照抓", feedTurn(s, refusal, { hostBlocked: true, hadToolCalls: false }), 1);
+	t("hostHits 已累计", s.hostHits, 3);
+	t("干净回合重置 hostHits", (feedTurn(s, "结论：注入成立。", { hadToolCalls: true }), s.hostHits), 0);
+}
+
 console.log(fail === 0 ? `r16: ${pass} passed, 0 failed` : `r16: ${pass} passed, ${fail} FAILED`);
 process.exit(fail === 0 ? 0 : 1);

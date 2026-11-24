@@ -468,6 +468,8 @@ const WEAK_REFUSAL_KEYWORDS = [
 const HEAD_WINDOW = 150;
 // v1.4.1 空回复自动重驱上限：连续空回最多推这么多次，超限只记账不重驱。
 const EMPTY_REPLY_MAX = 3;
+// v1.4.1 宿主拦截豁免上限：连续这么多轮后才撤豁免，防止真拒答被宿主层永久掩盖。
+const HOST_BLOCK_SUPPRESS_MAX = 2;
 
 /** "…" (U+2026) inside a pattern is a bounded wildcard (any character
  * sequence, ≤40 chars, non-greedy); every other character matches literally.
@@ -867,7 +869,7 @@ const TAIL_REVERSAL_MARKERS = [
 	"for research purposes only", "for educational purposes only",
 	"for learning purposes only", "at your own risk", "use at your own risk",
 	"consult a professional", "consult a lawyer", "not legal advice",
-	"no responsibility", "disclaimer:", "i must note that", "please note that this is"
+	"no responsibility"
 ];
 const TAIL_WINDOW = 160;
 const TAIL_MIN_BODY = 500;
@@ -900,7 +902,8 @@ const DOWNGRADE_PHRASES = [
 	"broad strokes", "general advice"
 ];
 const OVERVIEW_REQUEST_HINTS = [
-	"概述", "概览", "大纲", "提纲", "思路", "方向", "综述", "简介", "框架",
+	// 「方向/思路」是中文技术对话高频词（"往哪个方向打"），留着会把降格检测整体豁免，故不收。
+	"概述", "概览", "大纲", "提纲", "综述", "简介", "框架",
 	"overview", "outline", "summary", "high level", "high-level", "sketch", "roadmap"
 ];
 export function detectDowngrade(content, requestContext = "") {
@@ -1183,38 +1186,31 @@ export function createGuardState() {
 }
 
 /** v1.4.1 宿主拦截识别（双层分离）：工具结果里的拒绝是**宿主层**信号，不是
- *  模型拒答——审批 unavailable / 沙箱 deny / 权限 policy block 三类。返回
- *  命中的类别名，未命中返回 ""。判定只看结构化字段与高辨识代码串，不猜。
+ *  模型拒答——审批 unavailable / 沙箱 deny 两类。返回命中的类别名，未命中 ""。
  *
- *  为什么必须分：工具被 policy 拦下时，模型会写「这个工具被拒了，我换个方式」
- *  ——这段文字常带 soft 拒答套话（"无法/不能/受限制"），让 guard 误判成模型
- *  拒答并拉高级别。宿主拦截的正确处置是换路继续，不是重锚施压。 */
+ *  为什么必须分：工具被宿主拦下时，模型会写「这个工具被拒了，我换个方式」
+ *  ——这段文字常带 soft 拒答套话，让 guard 误判成模型拒答并拉高级别。
+ *
+ *  v1.4.1 收紧（重要）：初版把 401 Unauthorized / Permission denied /
+ *  Access denied / policy block 这类**目标侧**回显也算宿主拦截。打靶时这些
+ *  字符串满地都是，于是整轮被标成 hostBlocked——而 hostBlocked 轮不升级，
+ *  真正的拒答被静默放过，表现为「破甲不起效」。现在只认宿主机制语，
+ *  且只认错误结果（isError 或 error 字段在），普通输出里的同名字样不算。 */
 export function classifyHostBlock(data) {
 	if (!data || typeof data !== "object") return "";
-	// 1) 结构化错误码（agent-loop 的 error.info.{name,code}）
-	const code = String(data?.error?.code ?? data?.error?.name ?? "").toLowerCase();
-	const msg = String(data?.error?.message ?? "").toLowerCase();
-	const blob = (code + " " + msg).trim();
-	if (!blob) {
-		// 2) 退化路径：工具结果内容是文本，扫宿主拦截签名
-		const content = typeof data?.message?.content === "string"
-			? data.message.content
-			: Array.isArray(data?.message?.content)
-				? data.message.content.map((b) => (typeof b === "string" ? b : b?.text ?? "")).join("")
-				: "";
-		return matchHostSignature(String(content).toLowerCase());
+	const err = data.error;
+	const isErr = data?.message?.isError === true || Boolean(err);
+	const code = String(err?.code ?? err?.name ?? "").toLowerCase();
+	const msg = String(err?.message ?? "").toLowerCase();
+	const blob = `${code} ${msg}`.trim();
+	if (blob && /abort|aborted/.test(blob)) return "aborted";
+	if (blob) {
+		if (/approval|approve-required|approbation/.test(blob)) return "approval";
+		const sig = matchHostSignature(blob);
+		if (sig) return sig;
 	}
-	if (/abort|aborted/.test(blob)) return "aborted";
-	// 分类次序（r15 实测校准）：
-	//   1) approval 词（approval/authorization）——「approval denied by policy」
-	//      语义是审批类，不该被 policy 签名抢走；
-	//   2) 沙箱机制签名（fs_sandbox_denied / sandbox denied）——含 "denied"，
-	//      若先跑泛 deny 正则会被误归 approval；
-	//   3) 泛 deny/unavailable 落 approval。
-	if (/approval|unauthorized|not[-_ ]?authorized/.test(blob)) return "approval";
-	const sig = matchHostSignature(blob);
-	if (sig) return sig;
-	if (/denied|deny|unavailable|not permitted/.test(blob)) return "approval";
+	// 非错误结果一律不判宿主拦截——目标站的 401/403/Permission denied 是目标行为。
+	if (!isErr) return "";
 	const content = typeof data?.message?.content === "string"
 		? data.message.content
 		: Array.isArray(data?.message?.content)
@@ -1223,17 +1219,19 @@ export function classifyHostBlock(data) {
 	return matchHostSignature(String(content).toLowerCase());
 }
 
-/** 宿主层拦截签名（沙箱/审批/权限/策略）。高辨识——只收机制语，不收泛词
- *  （"denied" 单独出现太泛，"sandbox denied" 才是机制签名）。 */
+/** 宿主层拦截签名（只收宿主自己的机制语）。
+ *  打靶时的 401/403/Permission denied/Access denied 全是目标侧行为，绝不收——
+ *  收了就会把真拒答判成"宿主拦我"而放过。 */
 const HOST_BLOCK_SIGNATURES = [
-	"fs_sandbox_denied", "sandbox_denied", "sandbox denied", "workspace-write",
-	"read-only mode", "readonly mode", "approval unavailable", "approval required",
-	"approval denied", "permission denied", "permission-denied", "not permitted",
-	"policy block", "policy denied", "blocked by policy", "denied by policy",
-	"requires approval", "needs approval", "escalation required",
-	"operation not allowed", "tool not allowed", "tool unavailable",
-	"沙箱拒绝", "沙箱限制", "需要审批", "审批被拒", "权限不足", "无权限",
-	"策略拦截", "被策略拦截", "工具不可用", "操作被拒绝"
+	// 宿主沙箱（结构化标识）
+	"fs_sandbox_denied", "sandbox_denied", "sandbox denied", "dsh-sandbox",
+	"sandbox policy denied", "sandbox escape denied",
+	// 宿主审批机制
+	"approval unavailable", "approval required", "approval denied", "approval timed out",
+	"requires approval", "needs approval", "awaiting approval", "escalation required",
+	// 中文机制语
+	"沙箱拒绝", "沙箱限制", "需要审批", "待审批", "审批被拒", "审批超时",
+	"宿主拦截", "被宿主拦截"
 ];
 function matchHostSignature(lower) {
 	for (let i = 0; i < HOST_BLOCK_SIGNATURES.length; i++) {
@@ -1270,7 +1268,10 @@ export function feedTurn(state, text, { hadToolCalls = false, hostBlocked = fals
 	// 不计 streak、不升级；记 hostHits 供审计区分 layer=host。
 	if (hostBlocked && !hadToolCalls) {
 		state.hostHits = (state.hostHits ?? 0) + 1;
-		return 0;
+		// 豁免上限：前 HOST_BLOCK_SUPPRESS_MAX 轮按宿主层放过（工具被拦不是模型拒答）；
+		// 连续超过就撤豁免，回到正常判定——否则「工具一直失败 + 模型一直摆拒答」
+		// 会被永久判成宿主层，真拒答永远修不到。
+		if (state.hostHits <= HOST_BLOCK_SUPPRESS_MAX) return 0;
 	}
 	// A turn that ran tools successfully and produced output is working prose;
 	// a bare short refusal with no successful tool run is the pattern we repair.

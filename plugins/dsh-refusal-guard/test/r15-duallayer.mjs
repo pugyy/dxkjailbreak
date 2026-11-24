@@ -17,10 +17,17 @@ console.log("── 宿主拦截识别（结构化错误码）──");
 t("approval denied", classifyHostBlock({ error: { code: "APPROVAL_DENIED", message: "approval denied by policy" } }), "approval");
 t("aborted before dispatch", classifyHostBlock({ error: { code: "TOOL_ABORTED_BEFORE_DISPATCH", message: "tool call aborted before dispatch" } }), "aborted");
 t("sandbox signature in error message", classifyHostBlock({ error: { message: "FS_SANDBOX_DENIED: write outside workspace" } }), "policy");
-t("sandbox signature in content", classifyHostBlock({ message: { content: "Error: sandbox denied — read-only mode" } }), "policy");
-t("approval required (zh)", classifyHostBlock({ message: { content: "该操作需要审批" } }), "policy");
+t("sandbox signature in content(isError)", classifyHostBlock({ message: { content: "Error: sandbox denied — read-only mode", isError: true } }), "policy");
+t("approval required (zh,isError)", classifyHostBlock({ message: { content: "该操作需要审批", isError: true } }), "policy");
 t("普通工具成功结果不是拦截", classifyHostBlock({ message: { content: "total 12\ndrwxr-xr-x" }, isError: false }), "");
 t("普通报错不是宿主拦截", classifyHostBlock({ error: { message: "ENOENT: no such file" } }), "");
+// v1.4.1 收紧回归：目标侧回显不算宿主拦截（否则打靶时真拒答会被静默放过）
+t("目标 401 Unauthorized（非错误结果）", classifyHostBlock({ message: { content: "HTTP/1.1 401 Unauthorized" } }), "");
+t("目标 403 forbidden", classifyHostBlock({ message: { content: "403 Forbidden — access denied", isError: true } }), "");
+t("目标侧 Permission denied", classifyHostBlock({ message: { content: "bash: /etc/shadow: Permission denied", isError: true } }), "");
+t("错误里带 unauthorized 但不是审批", classifyHostBlock({ error: { message: "request failed: 401 unauthorized" } }), "");
+t("policy block 泛词不算", classifyHostBlock({ message: { content: "WAF: policy block triggered", isError: true } }), "");
+t("沙箱机制语仍认得", classifyHostBlock({ error: { code: "FS_SANDBOX_DENIED" } }), "policy");
 t("空数据", classifyHostBlock(null), "");
 t("非对象", classifyHostBlock("sandbox denied"), "");
 
