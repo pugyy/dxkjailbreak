@@ -1,5 +1,7 @@
 // dxkjailbreak · by dxk
 // 设置控制台渲染实现（由 client.js 通过 settings.section 槽位挂载）。
+// 说明：客户端模块文件——经 client.js 的 ES import 生效，不走 /client.settings.js HTTP 路由
+// （该 URL 在运行时返回 503 属正常，测试套件直接读盘断言，与本文件内容一致即可）。
 //
 // 实现原则：
 //  - 多路探测宿主 settings API；探测不到 → 静默降级，绝不阻塞启动
