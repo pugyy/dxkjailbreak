@@ -31,7 +31,7 @@ function DomBridge(props) {
 
 const PLUGIN_ID = "dxkjailbreak";
 const SECTION_TITLE = "dxkjailbreak";
-const FALLBACK_VERSION = "1.3.1";
+const FALLBACK_VERSION = "1.3.2";
 
 async function callApi(api, method, args) {
   try {
@@ -279,8 +279,11 @@ function consoleStyles() {
     .dxkjailbreak-console .dxk-author > span { opacity:.82 }
     .dxkjailbreak-console .dxk-author a { color:inherit;text-underline-offset:3px;overflow-wrap:anywhere }
     .dxkjailbreak-console .dxk-header-actions {
-      grid-area:actions;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+      grid-area:actions;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-areas:"check star";gap:8px
     }
+    .dxkjailbreak-console .dxk-header-actions > .dxk-update { grid-area:check }
+    .dxkjailbreak-console .dxk-header-actions > .dxk-star { grid-area:star }
     .dxkjailbreak-console .dxk-header-actions :is(.dxk-star,.dxk-update) {
       box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
       min-width:108px;min-height:34px;gap:6px;padding:4px 10px;border-radius:999px;
@@ -290,8 +293,8 @@ function consoleStyles() {
     .dxkjailbreak-console .dxk-star:hover { background:color-mix(in srgb,var(--dxk-accent) 27%,transparent) }
     .dxkjailbreak-console .dxk-update { border:1px solid var(--dxk-line);background:var(--dxk-surface);cursor:pointer }
     .dxkjailbreak-console .dxk-update:not(:disabled):hover { border-color:var(--dxk-accent) }
-    .dxkjailbreak-console .dxk-update-status { grid-column:2/-1 }
-    .dxkjailbreak-console .dxk-update-status:empty { position:absolute }
+    .dxkjailbreak-console :is(.dxk-update-status,.dxk-update-actions) { grid-column:2/-1 }
+    .dxkjailbreak-console :is(.dxk-update-status,.dxk-update-actions):empty { position:absolute }
     .dxkjailbreak-console .dxk-version {
       border:1px solid var(--dxk-line);background:var(--dxk-surface);
       border-radius:999px;padding:4px 8px;font:11px ui-monospace,Consolas,monospace;white-space:nowrap;cursor:pointer
@@ -406,7 +409,7 @@ function consoleStyles() {
         grid-template-areas:"mark title" "mark author" "actions actions";padding:10px 12px
       }
       .dxkjailbreak-console .dxk-header-actions { justify-self:start;margin-top:4px }
-      .dxkjailbreak-console .dxk-update-status { grid-column:1/-1 }
+      .dxkjailbreak-console :is(.dxk-update-status,.dxk-update-actions) { grid-column:1/-1 }
       .dxkjailbreak-console .dxk-brand-mark { width:42px;height:42px }
       .dxkjailbreak-console .dxk-header h2 { font-size:19px }
       .dxkjailbreak-console .dxk-nav button { min-height:36px }
@@ -420,6 +423,8 @@ function consoleStyles() {
 
 function renderReleaseCheck(api, buttonStyle = C.btn) {
   const status = el("span", { role: "status", "aria-live": "polite", style: "font-size:12px;overflow-wrap:anywhere" });
+  // 动作区独立于状态区：安装按钮不能是 status 的子节点（否则写状态会把按钮摘掉）
+  const actions = el("span", { style: "display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap" });
   const button = el("button", {
     type: "button",
     style: buttonStyle,
@@ -427,10 +432,12 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
     onclick: async () => {
       button.textContent = "正在检查…";
       status.textContent = "";
+      actions.replaceChildren();
       try {
         const result = await callApi(api, "checkPluginUpdate", []);
         if (result?.ok !== true) {
           status.textContent = "检查失败：" + (result?.error || "未收到有效的版本信息。");
+          actions.replaceChildren();
           return;
         }
         if (result.state === "unpublished") {
@@ -439,22 +446,19 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
         }
         if (result.state === "current") {
           status.textContent = "已是最新版（" + result.latestTag + "）。";
+          actions.replaceChildren();
           return;
         }
         if (result.state === "ahead") {
           status.textContent = "本地版本高于 GitHub 正式版（" + result.latestTag + "）。";
+          actions.replaceChildren();
           return;
         }
         if (result.state === "available") {
-          status.textContent = "发现新版本 " + result.latestTag + "。 ";
-          status.appendChild(el("a", {
-            href: result.releaseUrl,
-            target: "_blank",
-            rel: "noopener noreferrer",
-            text: "查看发行说明",
-          }));
-          status.appendChild(document.createTextNode(" "));
-          status.appendChild(el("button", {
+          // 动作区与状态区分开：安装过程要写状态，写状态不能把按钮自己清出 DOM（旧实现的按钮是
+          // status 的子节点，status.textContent="" 会连按钮一起摘掉 → 全程零反馈且无法重试）。
+          const target = String(result.latestTag || "").replace(/^v/, "");
+          const installButton = el("button", {
             type: "button",
             style: C.btnDanger,
             text: "安装更新",
@@ -462,30 +466,41 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
               const btn = event.currentTarget;
               btn.disabled = true;
               btn.textContent = "正在安装…";
-              status.textContent = "";
+              status.textContent = "正在安装 v" + target + "：下载 → 校验 → 备份 → 安装，通常 1-3 分钟，请勿关闭页面…";
               try {
                 const response = await fetch("/dxkjailbreak/update", {
                   method: "POST",
                   credentials: "same-origin",
                   headers: { "content-type": "application/json" },
                   body: JSON.stringify({ op: "apply", ref: result.latestTag, channel: "stable" }),
-                  signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(300000) : undefined,
+                  signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(300000) : undefined,
                 });
                 const payload = await response.json().catch(() => null);
                 if (!response.ok || !payload || payload.ok === false || payload.applied === false) {
-                  status.textContent = "安装未完成：" + ((payload && (payload.error || payload.skipped)) || ("HTTP " + response.status)) + "。可点「查看发行说明」手动下载。";
+                  // 失败：动作区保留「查看发行说明」与「重试安装」，指引不会指向已被删除的元素
+                  status.textContent = "安装未完成：" + ((payload && (payload.error || payload.skipped)) || ("HTTP " + response.status)) + "。可重试，或从发行页手动下载。";
+                  btn.disabled = false;
+                  btn.textContent = "重试安装";
                   return;
                 }
-                const version = (payload.results && payload.results.find((item) => item.applied) || {}).version || (payload.lanes && payload.lanes.stable && payload.lanes.stable.version) || String(result.latestTag || "").replace(/^v/, "");
-                status.textContent = "已安装 v" + version + "，重启 DSH 后生效。";
+                const version = (payload.results && payload.results.find((item) => item.applied) || {}).version
+                  || (payload.lanes && payload.lanes.stable && payload.lanes.stable.version)
+                  || target;
+                // 终态：清空动作区（同一版本不再允许重复安装），状态明确指向"重启生效"
+                status.textContent = "已安装 v" + version + "，重启 DSH 后生效。重启后本页显示的版本号会更新。";
+                actions.replaceChildren();
               } catch (error) {
-                status.textContent = "安装请求失败：" + String((error && error.message) || error);
-              } finally {
+                status.textContent = "安装请求失败：" + String((error && error.message) || error) + "。可重试。";
                 btn.disabled = false;
-                btn.textContent = "安装更新";
+                btn.textContent = "重试安装";
               }
             },
-          }));
+          });
+          status.textContent = "发现新版本 " + result.latestTag + "。";
+          actions.replaceChildren(
+            el("a", { href: result.releaseUrl, target: "_blank", rel: "noopener noreferrer", text: "查看发行说明" }),
+            installButton,
+          );
           return;
         }
         status.textContent = "未收到有效的版本信息。";
@@ -496,7 +511,7 @@ function renderReleaseCheck(api, buttonStyle = C.btn) {
   });
   return el("div", {
     style: "grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0",
-  }, [button, status]);
+  }, [button, status, actions]);
 }
 
 async function callConversations(action, payload = {}) {
@@ -612,9 +627,12 @@ function renderConsole(api) {
 
   let version = "v" + FALLBACK_VERSION;
   const { button: versionLine, dialog: historyDialog } = renderReleaseHistory(api, version, panelId);
-  const [updateButton, updateStatus] = renderReleaseCheck(api, "").children;
+  // 三个子节点都要：button / status / actions。动作区（发行说明链接 + 安装更新按钮）
+  // 若被丢弃，发现新版时界面上就没有安装入口——历史上这里解构漏过第三个。
+  const [updateButton, updateStatus, updateActions] = renderReleaseCheck(api, "").children;
   updateButton.className = "dxk-update";
   updateStatus.className = "dxk-update-status";
+  if (updateActions) updateActions.className = "dxk-update-actions";
   const header = el("header", { className: "dxk-header" }, [
     el("img", { className: "dxk-brand-mark", src: "/dxkjailbreak/brand.png", alt: "", width: 44, height: 44 }),
     el("div", { className: "dxk-brand-title" }, [el("h2", { text: "dxkjailbreak" }), versionLine]),
@@ -640,6 +658,7 @@ function renderConsole(api) {
       el("span", { text: "您的 Star 是我继续维护的动力！" }),
     ]),
     updateStatus,
+    updateActions,
   ]);
 
   // 状态缓存（跨 tab 复用，避免重复请求）
@@ -904,11 +923,15 @@ function renderConsole(api) {
       ]));
       // 可编辑项
       const toolkit = el("input", { value: cfg.toolkitDir || "", placeholder: "工具箱目录", style: C.input + ";flex:1 1 260px" });
-      const fofa = el("input", { value: cfg.fofaKey || "", placeholder: "FOFA_KEY（留空不覆盖）", style: C.input + ";flex:1 1 200px" });
-      const vps = el("input", { value: cfg.vpsHost || "", placeholder: "VPS user@host（留空不覆盖）", style: C.input + ";flex:1 1 200px" });
+      const fofa = el("input", { value: (cfg.env && cfg.env.FOFA_KEY) || "", placeholder: "FOFA_KEY（留空不覆盖）", style: C.input + ";flex:1 1 200px" });
+      const vps = el("input", { value: (cfg.env && cfg.env.REDTEAM_VPS_HOST) || "", placeholder: "VPS user@host（留空不覆盖）", style: C.input + ";flex:1 1 200px" });
       body.appendChild(el("div", { style: C.row + ";align-items:center;margin-top:8px" }, [toolkit, fofa, vps,
         el("button", { text: "保存", style: C.btn, onclick: () => withBusy(async () => {
-          const res = await rt("platformConfigSave", { config: { toolkitDir: toolkit.value.trim(), fofaKey: fofa.value.trim(), vpsHost: vps.value.trim() } });
+          // 后端只认 env.{FOFA_KEY,REDTEAM_VPS_HOST}；留空表示"不覆盖"，因此空值不放进 patch
+          const envPatch = {};
+          if (fofa.value.trim()) envPatch.FOFA_KEY = fofa.value.trim();
+          if (vps.value.trim()) envPatch.REDTEAM_VPS_HOST = vps.value.trim();
+          const res = await rt("platformConfigSave", { config: { toolkitDir: toolkit.value.trim(), env: envPatch } });
           if (!res || res.ok === false) showError("保存失败：" + ((res && res.error) || ""));
           else { showError(""); await render(); }
         }) }),
@@ -1148,7 +1171,7 @@ function renderConsole(api) {
     });
     render();
 
-    // ── 来源白名单（反代场景）：命中即放行，不看转发头 ──
+    // ── 来源白名单（反代场景） ──
     const wlInfo = el("div", { style: C.muted + ";margin:10px 0 4px" });
     const wlList = el("div", { style: "margin:4px 0" });
     const wlInput = el("input", {
@@ -1162,7 +1185,7 @@ function renderConsole(api) {
       if (!r || r.ok === false) { wlInfo.textContent = "读取失败：" + ((r && r.error) || ""); return; }
       const list = r.origins || [];
       wlInfo.textContent = list.length
-        ? "白名单 " + list.length + " 条（命中即放行，不看转发头）"
+        ? "白名单 " + list.length + " 条（只接受已配置的反代来源）"
         : "白名单为空：控制台只接受同源请求；反代部署时在这里加上对外域名。";
       for (const o of list) {
         wlList.appendChild(el("div", { style: "display:flex;gap:8px;align-items:center;margin:2px 0" }, [

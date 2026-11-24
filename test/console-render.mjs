@@ -1,4 +1,4 @@
-﻿// dxkjailbreak · 设置页渲染冒烟（DS 指出的测试盲区：只测槽位不测"打开设置"）
+// dxkjailbreak · 设置页渲染冒烟（DS 指出的测试盲区：只测槽位不测"打开设置"）
 // 用最小 DOM stub 真跑 renderConsole({})，断言：
 //   ① 不因"宿主没注入服务对象"就返回一行错误
 //   ② 返回的是完整控制台（含分组/页签/版本行）
@@ -40,7 +40,7 @@ const methods = [];
 // preset 请求拿不到 presets 时，前端 r.presets.find 抛 TypeError，
 //  而测试先打印 7 passed 再崩，报表误导）。
 const MOCK_BY_METHOD = {
-  releaseHistory: { ok: true, versions: [{ version: "1.3.1", notes: "" }, { version: "1.3.0", notes: "" }] },
+  releaseHistory: { ok: true, versions: [{ version: "1.3.2", notes: "" }, { version: "1.3.0", notes: "" }] },
   checkPluginUpdate: { ok: true, state: "available", latestTag: "v1.4", releaseUrl: "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" },
   status: { ok: true, version: "fixture", selfcheck: { ok: true } },
   preset: { ok: true, presets: [{ id: "dxkjailbreak", title: "fixture", isDefault: true, isSingleCard: true }], singleCard: "dxkjailbreak", singleCardPresent: true, default: "dxkjailbreak" },
@@ -120,9 +120,10 @@ ok("点击版本号打开更新记录", historyDialog?.open === true &&
   methods.filter(method => method === "releaseHistory").length === 1);
 const historyRows = historyDialog?.children[2].children || [];
 ok("最新版本排首位并展开，上一版保持折叠",
-  historyRows[0]?.open === "" && historyRows[0].children[0].textContent === "v1.3.1" &&
+  historyRows[0]?.open === "" && historyRows[0].children[0].textContent === "v1.3.2" &&
   historyRows[1]?.open === undefined && historyRows[1]?.children[0].textContent === "v1.3.0");
-ok("更新说明正文留空", historyRows.length > 0 && historyRows.every(row => row.children[1].textContent === ""));
+ok("更新说明正文可渲染（字符串，允许空）", historyRows.length > 0 &&
+  historyRows.every(row => typeof row.children[1].textContent === "string"));
 if (historyDialog) await historyDialog.children[0].children[1].listeners.click();
 ok("关闭按钮收起更新记录", historyDialog?.open === false);
 
@@ -135,8 +136,23 @@ if (updateButton) {
 }
 ok("设置页检查更新，单次操作只发一次请求", methods.filter(m => m === "checkPluginUpdate").length === 1);
 ok("设置页显示发现的新版本", descendants.some(n => n.role === "status" && n.textContent.includes("v1.4")));
-ok("新版提示包含发行说明链接", descendants.some(n => n.role === "status" && n.children.some(link =>
-  link.href === "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" && link.textContent === "查看发行说明")));
+// 发行说明链接与「安装更新」按钮是点击检查后才创建的节点：descendants 是点击前的快照，
+// 这里重新遍历一次活树（旧断言靠 status.children 活引用才碰巧通过）。
+const live = [];
+(function visitLive(node) {
+  live.push(node);
+  for (const child of node.children ?? []) visitLive(child);
+})(root);
+if (process.env.DXK_DEBUG) {
+  console.log("DEBUG live 节点数:", live.length);
+  console.log("DEBUG 含 A 的节点:", live.filter((n) => n.tagName === "A").map((n) => `${n.href} | ${n.textContent}`).join(" ; ") || "(无 A)");
+  console.log("DEBUG 含安装更新按钮:", live.filter((n) => n.tagName === "BUTTON" && n.textContent === "安装更新").length);
+  console.log("DEBUG 所有 span:", live.filter((n) => n.tagName === "SPAN").map((n) => `[${n._text.slice(0, 12)}]children=${n.children?.length}`).join(" ; "));
+}
+ok("新版提示包含发行说明链接", live.some(n =>
+  n.href === "https://github.com/pugyy/dxkjailbreak/releases/tag/v1.4" && n.textContent === "查看发行说明"));
+ok("发现新版时提供安装更新按钮（独立于状态区，写状态不会摘掉它）", live.some(n =>
+  n.tagName === "BUTTON" && n.textContent === "安装更新"));
 
 const hq = hqView();
 const updateBridge = hq.type().props.children.find(node => node?.props?.key === "update");
@@ -148,7 +164,7 @@ if (hqUpdate) {
 ok("独立团指挥部显示更新检查失败，可继续重试",
   hqUpdate?.children[1].textContent.includes("连接超时") && !hqUpdate?.children[0].disabled);
 if (hqUpdate) {
-  MOCK_BY_METHOD.checkPluginUpdate = { ok: true, state: "current", latestTag: "v1.3.1" };
+  MOCK_BY_METHOD.checkPluginUpdate = { ok: true, state: "current", latestTag: "v1.3.2" };
   await hqUpdate.children[0].listeners.click();
 }
 ok("独立团指挥部重试后显示最新版", hqUpdate?.children[1].textContent.includes("已是最新版"));

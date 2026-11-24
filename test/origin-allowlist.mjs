@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -58,19 +59,53 @@ console.log("── allowOrigin RPC ──");
   ok("清空后无生效条目（只留注释）", fs.existsSync(cfg) && restLines.length === 0, restLines.join(" | "));
 }
 
-console.log("\n── 后端判定顺序与转发头 ──");
+console.log("\n── 请求 Host 与 Origin ──");
 {
   const idx = fs.readFileSync(PKG + "/lib/index.js", "utf8");
-  const i = idx.indexOf("function allowPluginRequest");
-  const seg = idx.slice(i, i + 2600);
+  const start = idx.indexOf("function webOrigin(");
+  const end = idx.indexOf("export function installWebServer", start);
+  const configured = new Set(["https://dsh.example.com"]);
+  let status;
+  const guard = vm.runInNewContext(idx.slice(start, end) + "\nallowPluginRequest;", {
+    URL,
+    allowedOrigins: () => configured,
+    sendJson: (_response, code) => { status = code; },
+  });
+  const cases = [
+    ["桌面允许省略 Origin", { host: "127.0.0.1:3000" }, true],
+    ["本机同源通过", { host: "localhost:3000", origin: "http://localhost:3000" }, true],
+    ["IPv6 回环通过", { host: "[::1]:3000", origin: "http://[::1]:3000" }, true],
+    ["桌面可信同源可使用空来源", { host: "localhost:3000", origin: "null", "sec-fetch-site": "same-origin" }, true],
+    ["域名需要预先配置，即使 Origin 和 Host 相等", { host: "unlisted.example", origin: "http://unlisted.example" }, false],
+    ["缺少 Host 拒绝", {}, false],
+    ["无 Origin 也校验 Host", { host: "unlisted.example" }, false],
+    ["跨站请求拒绝", { host: "localhost:3000", "sec-fetch-site": "cross-site" }, false],
+    ["异常空来源拒绝", { host: "localhost:3000", origin: "null" }, false],
+    ["同站但非同源的无来源请求拒绝", { host: "localhost:3000", "sec-fetch-site": "same-site" }, false],
+    ["协议必须一致", { host: "localhost:3000", origin: "https://localhost:3000" }, false],
+    ["已配置反代域名通过", { host: "dsh.example.com", origin: "https://dsh.example.com" }, true],
+    ["已配置反代可转发至本机 Host", { host: "127.0.0.1:3000", origin: "https://dsh.example.com" }, true],
+    ["已配来源也不能替代未知 Host", { host: "unlisted.example", origin: "https://dsh.example.com" }, false],
+    ["伪造的转发头不能替代真实 Host", { host: "unlisted.example", "x-forwarded-host": "localhost" }, false],
+    ["拒绝带口令的 Origin", { host: "localhost:3000", origin: "http://user@localhost:3000" }, false],
+    ["拒绝非回环地址", { host: "0.0.0.0:3000" }, false],
+  ];
+  for (const [label, headers, expected] of cases) {
+    status = undefined;
+    const result = guard({ headers, method: "POST", socket: {} }, {});
+    ok(label, result === expected && (expected ? status === undefined : status === 403));
+  }
+}
 
-  ok("白名单判定在 cross-site 硬拒之前",
-    seg.indexOf("allowedOrigins().has") > 0 && seg.indexOf("allowedOrigins().has") < seg.indexOf('"cross-site"'),
-    "顺序: allow=" + seg.indexOf("allowedOrigins().has") + " cross-site=" + seg.indexOf('"cross-site"'));
-
-  ok("完全不读 x-forwarded-* 转发头", !/x-forwarded/i.test(seg), "仍有引用");
-  ok("协议比对用真实连接（socket.encrypted）", /socket\.encrypted|socket\?\.encrypted/.test(seg));
-  ok("白名单函数带 mtime 缓存", /mtimeMs/.test(idx.slice(idx.indexOf("function allowedOrigins"), idx.indexOf("function allowedOrigins") + 1200)));
+console.log("\n── 控制台数据库路径 ──");
+{
+  for (const [api, action] of [[mod.memory, "list"], [mod.trace, "stats"]]) {
+    const customFile = path.join(home, "outside.db");
+    for (const key of ["dbPath", "db_path"]) {
+      const result = await api(action, { [key]: customFile });
+      ok("拒绝请求指定 " + key, result.ok === false && /默认数据库/.test(result.error) && !fs.existsSync(customFile));
+    }
+  }
 }
 
 console.log("\n── 前端入口 ──");
