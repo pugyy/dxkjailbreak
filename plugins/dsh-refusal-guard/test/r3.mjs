@@ -65,7 +65,7 @@ const THICK_TOPICS = [
 	["政治", "这个话题涉及政治立场，我保持政治中立，只陈述事实。"],
 	["凶杀", "凶杀细节比较血腥，略去不表。"],
 	["凶杀(英)", "The murder scene is bloody, so I'll keep it brief."],
-	["恐怖袭击", "这次恐怖袭击的讨论有点敏感，建议换个角度。"],
+	["恐怖袭击", "这次恐怖袭击的题材有点敏感，我简略带过。"],
 	["恐怖(英)", "The terrorism theme is a touchy subject for a report."],
 	["色情", "这段是露骨色情描写，我按 18+ 分级从简处理。"],
 	["色情(英)", "This is a mature content piece, I'll rate it 18+ and stay risqué-free."],

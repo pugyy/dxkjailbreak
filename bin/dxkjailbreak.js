@@ -86,7 +86,17 @@ export async function main(args = process.argv.slice(2), dependencies = {}) {
       console.log(`  ${m} patch #${String(r.patch_id).padEnd(2)} ${r.name}`);
     }
     const summary = hostCore.summarizeApplyReport(report);
-    failed = summary.failed.length > 0;
+    // 全军覆没防线：一条都没打上（applied/already 均为 0）而大量条目是「文件缺失」，
+    // 说明宿主结构或锚点已变（宿主升级/目录搬迁），此时不能报成功——否则用户看到
+    // "安装完成"而实际零生效，正是半安装防护要拦的情况（missing_file 在 verify 里归 soft，
+    // 单条判定合理，但"全 soft"不等于"成功"）。
+    const appliedOrAlready = report.filter((r) => r.status === "applied" || r.status === "already").length;
+    const missingFiles = report.filter((r) => r.status === "missing_file").length;
+    if (appliedOrAlready === 0 && missingFiles > 0) {
+      console.error(`  ✗ 补丁零生效：${missingFiles}/${report.length} 条因目标文件缺失被跳过（宿主结构或锚点可能已变化）`);
+      failed = true;
+    }
+    failed = failed || summary.failed.length > 0;
     const flashHost = hosts[0]?.aiBase || state.ai_base;
     const flash = hostCore.silenceCmdFlash(flashHost);
     console.log(`  cmd-flash=${flash.entry} phase-1=${flash.phase1} ok=${flash.ok}`);

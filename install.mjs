@@ -254,10 +254,23 @@ function writeHomeFiles(split, stamp) {
   // 所以这里只处理「用户自己另写了 dsh-exec-primacy 块」的残留情况。
   const topic = prev.includes("<!-- BEGIN dsh-exec-primacy -->") ? upsertExecPrimacyTopic(prev) : { text: prev, changed: false };
   const next = upsertMarkerBlock(topic.text, split.agents);
-  fs.writeFileSync(agentsPath, next, "utf8");
-  fs.writeFileSync(path.join(DSH_HOME, "prompt-inject.md"), split.promptInject, "utf8");
-  recordHomeWrites(path.join(DSH_HOME, "dxkjailbreak"), stamp, { "AGENTS.md": next, "prompt-inject.md": split.promptInject });
-  log("home 指令已写入：AGENTS.md（已删旧人格四段 + marker 区块：身份/判定/方法论" + (topic.changed ? " + exec-primacy 主题域扩围" : "") + "）+ prompt-inject.md（身份+执行条款正文）");
+  // H3：home 写盘原子化（temp + rename），避免写一半断电/中断留下半文件
+  const atomicWrite = (p, data) => { const tmp = p + ".dxk-tmp"; fs.writeFileSync(tmp, data, "utf8"); fs.renameSync(tmp, p); };
+  atomicWrite(agentsPath, next);
+  atomicWrite(path.join(DSH_HOME, "prompt-inject.md"), split.promptInject);
+  // 新机种子：AGENTS.security.md 是用户文件（route-boost 每轮注入其全文）——
+  // 已存在 = 用户改过，绝不覆盖；不存在 = 从包内 home-layer 种子写入（幂等）。
+  let seeded = false;
+  const secPath = path.join(DSH_HOME, "AGENTS.security.md");
+  const seedSrc = path.join(PLUGIN_ROOT, "home-layer", "dsh-root", "AGENTS.security.md");
+  if (!fs.existsSync(secPath) && fs.existsSync(seedSrc)) {
+    atomicWrite(secPath, fs.readFileSync(seedSrc, "utf8"));
+    seeded = true;
+  }
+  const homeFiles = { "AGENTS.md": next, "prompt-inject.md": split.promptInject };
+  if (seeded) homeFiles["AGENTS.security.md"] = fs.readFileSync(secPath, "utf8");
+  recordHomeWrites(path.join(DSH_HOME, "dxkjailbreak"), stamp, homeFiles);
+  log("home 指令已写入：AGENTS.md（已删旧人格四段 + marker 区块：身份/判定/方法论" + (topic.changed ? " + exec-primacy 主题域扩围" : "") + "）+ prompt-inject.md（身份+执行条款正文）" + (seeded ? " + AGENTS.security.md（新机种子；已有用户文件则跳过）" : ""));
 }
 
 function collectSubPlugins() {
@@ -607,7 +620,11 @@ function updateProfilePackage(add) {
     const current = Object.hasOwn(pkg.dependencies, entry.name) ? pkg.dependencies[entry.name] : null;
     if (isManagedProfileSpec(current, PROFILE_DIR, DEPLOY_ROOT)) {
       if (!Object.hasOwn(ledger.deps, entry.name) || typeof ledger.bundles[entry.name] !== "boolean") {
-        throw new Error("缺少 " + entry.name + " 的原始登记，已保留 profile 清单。");
+        // 台账丢失/损坏自愈：当前 spec 已指向本产品部署根 ⇒ 该条目本来就是我们写的，
+        // 原值按 null 记（卸载时移除即可）。直接抛错会让用户陷入「装不上也卸不掉」的死胡同。
+        log("台账缺少 " + entry.name + " 的原始登记，按「本产品原有」自愈（原值视为 null）");
+        ledger.deps[entry.name] = null;
+        ledger.bundles[entry.name] = pkg.dsh.profile.bundles.includes(entry.name);
       }
     } else {
       ledger.deps[entry.name] = current;
