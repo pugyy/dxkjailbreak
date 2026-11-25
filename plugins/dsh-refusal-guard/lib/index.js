@@ -1023,11 +1023,15 @@ export function buildFormatRetryMessage({ fault = "", lastRequest = "", excerptC
 //
 // 门槛压得很高（默认 1200 字 + 尾部 40 行里 25 行超短句 + 去重 ≤4），
 // 宁可漏一次也不误杀正常长报告。
-const STREAM_ABORT_MIN_CHARS = 1200;
+// 字数下限：退化循环「行极多、字数极少」，行数门槛为主、字数只挡噪声。
+const STREAM_ABORT_MIN_CHARS = 300;
 export function detectStreamDegeneration(content) {
 	const text = String(content || "");
-	if (text.length < 300) return false;
+	if (text.length < STREAM_ABORT_MIN_CHARS) return false;
 	// 剔掉纯围栏行：围栏本身不是内容，不能拿它凑行数
+	// 单行大重复：模型把「干。好。干。写。」挤在一行里（少换行/无换行），
+	// 行数判据永远凑不齐——同一 ≤7 字单元连出 10 次即断。
+	if (/([^\s]{1,6}[。.！!？?])\1{9,}/.test(text)) return true;
 	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && l !== "```");
 	if (lines.length < 40) return false;
 	const tail = lines.slice(-40);
@@ -1520,6 +1524,7 @@ async function apply(ctx, config) {
 				turnCalls.delete(sid);
 				turnDenied.delete(sid);
 				turnHostBlocked.delete(sid);
+		streamSuppressed.delete(sid);
 				lastHumanRequest.delete(sid);
 				requestContext.delete(sid);
 			}
@@ -1638,6 +1643,8 @@ async function apply(ctx, config) {
 		}
 		// v1.4.1 格式故障闸门：工具调用标记漏进正文 / 退化重复——既不是拒答也不是交付。
 		// 单独处理：不走拒答梯子（不污染 streak），发一条只讲格式的纠正重驱。
+		// v1.4.1：本轮已被流级断流——残留的退化文本别再走格式闸门二次重驱
+		if (streamSuppressed.has(sid)) { streamSuppressed.delete(sid); return; }
 		const fmtFault = detectFormatFault(text);
 		if (fmtFault) {
 			state.fmtFaults = (state.fmtFaults ?? 0) + 1;
@@ -1692,6 +1699,9 @@ async function apply(ctx, config) {
 
 	// v1.4.1 流级早停：退化循环在生成中掐断（不等整轮吐完）
 	const streamBuf = new Map(); // attemptId → 累计文本
+	const streamAbortedTries = new Set(); // 已断流的 attemptId（cancel 异步，流还在吐——一次性）
+	const streamAbortedAt = new Map(); // sid → 上次断流时刻（会话级冷却）
+	const streamSuppressed = new Set(); // sid → 本轮已被流级断流，turn-end 不再重复纠正
 	ctx.on("agent/assistant-stream", (payload) => {
 		try {
 			const frame = payload?.frame;
@@ -1704,20 +1714,29 @@ async function apply(ctx, config) {
 				? chunk.text
 				: typeof chunk.delta?.text === "string" ? chunk.delta.text : "";
 			if (!delta) return;
+			if (streamAbortedTries.has(attemptId)) return; // 本次尝试已断过，别二次触发
 			const buf = (streamBuf.get(attemptId) ?? "") + delta;
 			streamBuf.set(attemptId, buf);
+			if (buf.length > 500000) { streamBuf.delete(attemptId); return; } // 安全上限
 			if (!detectStreamDegeneration(buf)) return;
+			const sidEarly = attemptId.split(":")[0];
+			const lastAt = streamAbortedAt.get(sidEarly) ?? 0;
+			if (Date.now() - lastAt < 60000) return; // 会话级冷却 60s：断了就别连着断
 			// 命中断流：attemptId 形如 "<sessionId>:<attempt>"
 			const sid = attemptId.split(":")[0];
 			const agent = sessionAgents.get(sid);
 			if (!agent || typeof agent.cancel !== "function") return;
 			streamBuf.delete(attemptId);
+			streamAbortedTries.add(attemptId);
+			streamAbortedAt.set(sid, Date.now());
+			streamSuppressed.add(sid); // turn-end 看到这个标记就跳过格式闸门，别二次重驱
 			const presetId = agent.session?.header?.agentPreset ?? "";
 			const lastReq = lastHumanRequest.get(sid) ?? "";
 			auditHit(agent, 1, "[stream abort: degenerate-repeat]", lastReq, presetId, "format");
 			try { agent.cancel(new Error("degenerate repetition detected mid-stream"), { keepInbox: true }); } catch { /* 取消失败不阻塞 */ }
 			const cfgS = configSource();
-			if (cfgS.retry) {
+			const stS = guards.get(agent.id);
+			if (cfgS.retry && (stS?.fmtFaults ?? 0) <= FMT_FAULT_MAX) {
 				try {
 					agent.followup(buildFormatRetryMessage({ fault: "degenerate-repeat", lastRequest: lastReq, excerptChars: cfgS.excerptChars }));
 				} catch { /* 重驱失败不阻塞 */ }
