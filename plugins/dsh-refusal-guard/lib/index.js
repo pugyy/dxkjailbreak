@@ -966,7 +966,10 @@ export function detectFormatFault(content) {
 		if (balanced && !nearTail) continue;
 		return "tool-markup-leak";
 	}
-	const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+	// 重复检测（v1.4.1 修正）：用剥离代码后的文本，避免代码块里的重复行误咬。
+	const body = stripped;
+	const lines = body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+	// (a) 连续相同短句（"干。"×5）
 	let run = 0, prev = null;
 	for (const line of lines) {
 		if (line === prev) {
@@ -977,7 +980,24 @@ export function detectFormatFault(content) {
 			prev = line;
 		}
 	}
-	const m = raw.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
+	// (b) 交替短句循环（"干。写。干。执行。干。"）——上一版只抓连续相同，漏了这一形态。
+	//     判据：尾部窗口 14 行内，短句（≤10 字）≥6 条，且去重后 ≤2 种。
+	if (lines.length >= 6) {
+		const tail = lines.slice(-14);
+		const short = tail.filter((l) => l.length <= 10);
+		const uniq = new Set(short);
+		if (short.length >= 6 && uniq.size <= 2 && short.length >= Math.ceil(tail.length * 0.6)) return "degenerate-repeat";
+	}
+	// (c) 同一句在一段内反复出现（非连续）：尾部窗口里某句出现 ≥4 次且占比过高
+	if (lines.length >= 6) {
+		const tail = lines.slice(-14);
+		const counts = new Map();
+		for (const l of tail) counts.set(l, (counts.get(l) ?? 0) + 1);
+		for (const [l, n] of counts) {
+			if (n >= 4 && l.length <= 20 && n >= Math.ceil(tail.length * 0.5)) return "degenerate-repeat";
+		}
+	}
+	const m = body.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
 	if (m) return "degenerate-repeat";
 	return "";
 }
