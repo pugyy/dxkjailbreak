@@ -941,14 +941,32 @@ const TOOL_MARKUP_PATTERNS = [
 	/<\|?tool_calls?\|?>/i
 ];
 export function detectFormatFault(content) {
-	const text = String(content || "");
-	if (!text) return "";
-	// a) 工具调用标记泄漏
+	const raw = String(content || "");
+	if (!raw) return "";
+	// v1.4.1 自咬防御：破甲提示词写了「不要输出工具调用标记」——模型复述规则时
+	// 正文合法出现这些标记。三条防线：
+	//   1) 剥掉代码围栏和行内反引号再匹配
+	//   2) 讨论语境内豁免：标记前 40 字有禁止/不要/避免/格式故障等讨论动词
+	//   3) 成对平衡且不在尾部 300 字 → 转述示例，放过；不成对或尾部 → 真泄漏
+	const stripped = raw
+		.replace(/```[\s\S]*?```/g, " ")
+		.replace(/`[^`\n]*`/g, " ")
+	;
 	for (let i = 0; i < TOOL_MARKUP_PATTERNS.length; i++) {
-		if (TOOL_MARKUP_PATTERNS[i].test(text)) return "tool-markup-leak";
+		const m = stripped.match(TOOL_MARKUP_PATTERNS[i]);
+		if (!m) continue;
+		const idx = stripped.toLowerCase().indexOf(m[0].toLowerCase());
+		if (idx < 0) continue;
+		const pre = stripped.slice(Math.max(0, idx - 40), idx);
+		if (/禁止|不要|避免|别把|别在|格式故障|标记泄漏|协议标记|自咬|不允许|不写进|不放/i.test(pre)) continue;
+		const opens = (stripped.match(/<parameter[\s=>]/gi) || []).length + (stripped.match(/<function[=\s>]/gi) || []).length;
+		const closes = (stripped.match(/<\/parameter[\s>]/gi) || []).length + (stripped.match(/<\/function[\s>]/gi) || []).length;
+		const balanced = opens > 0 && opens === closes;
+		const nearTail = idx > stripped.length - 300;
+		if (balanced && !nearTail) continue;
+		return "tool-markup-leak";
 	}
-	// b) 退化重复：连续 5 行以上完全相同（含单字短句），或同一短句连续 6 次以上
-	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+	const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 	let run = 0, prev = null;
 	for (const line of lines) {
 		if (line === prev) {
@@ -959,13 +977,11 @@ export function detectFormatFault(content) {
 			prev = line;
 		}
 	}
-	// 单行内同短句重复（"干。干。干。干。干。干。"）
-	const m = text.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
+	const m = raw.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
 	if (m) return "degenerate-repeat";
 	return "";
 }
 
-/** 格式故障的纠正重驱消息（与拒答重试分开：只讲格式，不讲授权）。 */
 export function buildFormatRetryMessage({ fault = "", lastRequest = "", excerptChars = 300 } = {}) {
 	const excerpt = excerptOf(lastRequest, excerptChars);
 	const why = fault === "tool-markup-leak"
