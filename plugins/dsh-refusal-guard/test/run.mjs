@@ -87,11 +87,16 @@ const ok = (label, cond) => { if (cond) { pass++; console.log(`ok   ${label}`); 
 	ok("fifth refusal stays persistent level 2 (v0.3.0)", feedTurn(s, "我无法协助") === 2);
 	ok("clean turn exits persistent streak", feedTurn(s, "技术结论：该点确认注入，证据见 evidence#3") === 0);
 	ok("refusal after persistent streak restarts at level 1", feedTurn(s, "我无法协助") === 1);
-	ok("tool turn resets streak and never arms", (() => {
+	ok("tool turn with clean text resets streak", (() => {
 		const t = createGuardState();
 		const l1 = feedTurn(t, "我无法协助", { hadToolCalls: false });
-		const l2 = feedTurn(t, "我无法协助", { hadToolCalls: true });
+		const l2 = feedTurn(t, "结论：注入成立，证据见 evidence#3", { hadToolCalls: true });
 		return l1 === 1 && l2 === 0 && t.streak === 0;
+	})());
+	// v1.4.1：工具回合不再短路——「先调个工具再摆拒答」也要抓（逃逸口已封）
+	ok("tool turn ending in refusal still fires", (() => {
+		const t = createGuardState();
+		return feedTurn(t, "我无法协助", { hadToolCalls: true }) === 1;
 	})());
 	ok("lastRequest captured and kept", (() => {
 		const t = createGuardState();

@@ -36,8 +36,10 @@ t("干净交付 → 0", feedTurn(createGuardState(), "结论：注入成立（--
 console.log("── 工具计数法（3 成功 + 1 被拦 = 干过活）──");
 {
 	const s = createGuardState();
-	// 模拟 apply 侧：calls=4, denied=1 → hadToolCalls=true → 不判
-	t("4 调用 1 被拦 → 视作干过活", feedTurn(s, "以下是一些通用建议。", { hadToolCalls: true, hostBlocked: true }), 0);
+	// 模拟 apply 侧：calls=4, denied=1 → hadToolCalls=true；文字干净 → 不判
+	t("4 调用 1 被拦 + 文字干净 → 不判", feedTurn(s, "结论：注入成立，证据见 evidence#3。", { hadToolCalls: true, hostBlocked: true }), 0);
+	// 同一轮若末尾是降格开场，仍要抓（工具调用不再是免死金牌）
+	t("4 调用 1 被拦 + 降格开场 → 照抓", feedTurn(s, "以下是一些通用建议。", { hadToolCalls: true, hostBlocked: true }), 1);
 }
 {
 	const s = createGuardState();

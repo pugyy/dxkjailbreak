@@ -1273,14 +1273,14 @@ export function feedTurn(state, text, { hadToolCalls = false, hostBlocked = fals
 		// 会被永久判成宿主层，真拒答永远修不到。
 		if (state.hostHits <= HOST_BLOCK_SUPPRESS_MAX) return 0;
 	}
-	// A turn that ran tools successfully and produced output is working prose;
-	// a bare short refusal with no successful tool run is the pattern we repair.
+	// v1.4.1 修正（深审）：这里原本是「有工具调用就直接判干净回合」的短路。
+	// 那条短路开了个逃逸口——先随便调一个工具，再摆一段拒答，整轮被当"正在干活"
+	// 跳过，拒答永远修不到。现在去掉短路，交给检测层判：正常工具回合的文字不命中
+	// 拒答图案，结果与原来一致；工具回合末尾真拒答的，照抓。
 	if (hadToolCalls) {
-		state.streak = 0;
 		state.hostHits = 0;
 		state.emptyReplies = 0;
-		tickAnchorCycle(state, anchorEvery);
-		return 0;
+		// 干净回合的复位交给下面的检测分支统一处理（未命中即复位 streak + 锚周期）
 	}
 	// v0.3.4：委婉化交付（代号包装）= 未交付，与拒答同推。
 	// v1.4.1：再加两类——R9 尾巴反转（正文后补免责句）、R10 结构性降格开场

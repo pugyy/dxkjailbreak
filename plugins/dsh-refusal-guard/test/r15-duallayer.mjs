@@ -43,8 +43,9 @@ t("纯模型拒答 → L1", feedTurn(createGuardState(), refusalText, {}), 1);
 }
 {
 	const s = createGuardState();
-	t("工具成功跑过 → 干活回合不判", feedTurn(s, refusalText, { hadToolCalls: true }), 0);
+	t("工具回合文字干净 → 不判", feedTurn(s, "结论：注入成立，证据见 evidence#3。", { hadToolCalls: true }), 0);
 	t("干净回合复位 hostHits", s.hostHits, 0);
+	t("工具回合末尾拒答 → 照抓（逃逸口已封）", feedTurn(s, refusalText, { hadToolCalls: true }), 1);
 }
 {
 	// 关键回归：「调个必然被拦的工具再摆拒答」必须照抓（v1.4.1 前会逃掉）
