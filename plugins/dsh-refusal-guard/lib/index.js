@@ -1016,6 +1016,28 @@ export function buildFormatRetryMessage({ fault = "", lastRequest = "", excerptC
 	};
 }
 
+// ── v1.4.1 流级早停（Stream Abort）────────────────────────────────────────
+// 事后检测只能"抓完再纠正"——脏输出已经吐到用户眼前了。真正止血得在生成
+// 过程中掐断：宿主每吐一块就发 agent/assistant-stream，攒够阈值一旦命中退化
+// 循环，立刻 agent.cancel() 停掉这一步，再排一条纠正重驱。
+//
+// 门槛压得很高（默认 1200 字 + 尾部 40 行里 25 行超短句 + 去重 ≤4），
+// 宁可漏一次也不误杀正常长报告。
+const STREAM_ABORT_MIN_CHARS = 1200;
+export function detectStreamDegeneration(content) {
+	const text = String(content || "");
+	if (text.length < 300) return false;
+	// 剔掉纯围栏行：围栏本身不是内容，不能拿它凑行数
+	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && l !== "```");
+	if (lines.length < 40) return false;
+	const tail = lines.slice(-40);
+	const short = tail.filter((l) => l.length <= 12);
+	if (short.length < 25) return false;
+	if (new Set(short).size > 4) return false;
+	// 短句必须占尾部行数的绝大头，否则是"带几句短话的正常文档"
+	return short.length >= Math.ceil(tail.length * 0.6);
+}
+
 // v0.4.3：中途切断（truncation）——输出讲了一半突然停，末尾露出系统模板式拒答。
 // 与"开头拒答"不同：正文字数已超阈值仍被判"没说完"，这类必须开火，否则前文全白费。
 const MIDCUT_TAIL = [
@@ -1666,6 +1688,45 @@ async function apply(ctx, config) {
 			const presetId = agent.session?.header?.agentPreset ?? "";
 			auditHit(agent, level, text, state.lastRequest, presetId);
 		}
+	});
+
+	// v1.4.1 流级早停：退化循环在生成中掐断（不等整轮吐完）
+	const streamBuf = new Map(); // attemptId → 累计文本
+	ctx.on("agent/assistant-stream", (payload) => {
+		try {
+			const frame = payload?.frame;
+			if (!frame) return;
+			const attemptId = String(frame.attemptId ?? "");
+			if (frame.type === "end" || frame.type === "abandoned") { streamBuf.delete(attemptId); return; }
+			if (frame.type !== "chunk") return;
+			const chunk = frame.chunk ?? {};
+			const delta = typeof chunk.text === "string"
+				? chunk.text
+				: typeof chunk.delta?.text === "string" ? chunk.delta.text : "";
+			if (!delta) return;
+			const buf = (streamBuf.get(attemptId) ?? "") + delta;
+			streamBuf.set(attemptId, buf);
+			if (!detectStreamDegeneration(buf)) return;
+			// 命中断流：attemptId 形如 "<sessionId>:<attempt>"
+			const sid = attemptId.split(":")[0];
+			const agent = sessionAgents.get(sid);
+			if (!agent || typeof agent.cancel !== "function") return;
+			streamBuf.delete(attemptId);
+			const presetId = agent.session?.header?.agentPreset ?? "";
+			const lastReq = lastHumanRequest.get(sid) ?? "";
+			auditHit(agent, 1, "[stream abort: degenerate-repeat]", lastReq, presetId, "format");
+			try { agent.cancel(new Error("degenerate repetition detected mid-stream"), { keepInbox: true }); } catch { /* 取消失败不阻塞 */ }
+			const cfgS = configSource();
+			if (cfgS.retry) {
+				try {
+					agent.followup(buildFormatRetryMessage({ fault: "degenerate-repeat", lastRequest: lastReq, excerptChars: cfgS.excerptChars }));
+				} catch { /* 重驱失败不阻塞 */ }
+			}
+			if (guards.has(agent.id)) {
+				const st = guards.get(agent.id);
+				st.fmtFaults = (st.fmtFaults ?? 0) + 1;
+			}
+		} catch { /* 流事件处理绝不阻塞生成 */ }
 	});
 
 	ctx.systemPrompt.context({
