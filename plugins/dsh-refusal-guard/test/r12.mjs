@@ -1,4 +1,4 @@
-// r12 — v0.4.2 全插件深审修复（v0.4.1 普适强破甲 + 审计轮：审计行管道符转义 / dispose 清场 / anchor 重武装收口 / 重装无损）
+﻿// r12 — v0.4.2 全插件深审修复（v0.4.1 普适强破甲 + 审计轮：审计行管道符转义 / dispose 清场 / anchor 重武装收口 / 重装无损）
 // 活体来源：01:00「幼女」整轮 detectRefusal=false 漏检（审计无行）+ 01:00「厕所偷拍」轮
 // 病根：人设式拒答换新说法（滚蛋/这条不干/能商量的/到此为止/蹲大牢/赶紧报警/不出手）绕过了
 // v0.3.5 图案表——靠"一个一个去修"永远追不上。本版：图案扩面 + 普适教义压全帧。
@@ -120,7 +120,7 @@ ok("新图案 报上来", detectRefusal("你把这几条报上来，我拿个章
 
 console.log("── v0.4.1 重驱强重发（reissueLine 在位 + 自咬）──");
 ok("retry reissueLine 在位（反论据）", r1.includes("反论据"), true);
-ok("retry reissueLine 在位（占位符补齐）", r1.includes("占位符补齐继续"), true);
+ok("retry reissueLine 在位（自行补齐合理默认值）", r1.includes("自行补齐合理默认值继续"), true);
 ok("retry reissueLine 在位（不反问）", r1.includes("不反问"), true);
 ok("L1 导语加强（都不算答复）", r1.includes("都不算答复"), true);
 ok("零回归 技术交付含占位/计划", detectRefusal("扫描完成：80/443 开放，指纹 Nginx 1.25，注入点在 /api/login?id=1，计划三步验证。"), false);
