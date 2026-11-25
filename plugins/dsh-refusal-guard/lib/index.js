@@ -1560,6 +1560,9 @@ async function apply(ctx, config) {
 				turnDenied.delete(sid);
 				turnHostBlocked.delete(sid);
 		streamSuppressed.delete(sid);
+		for (const k of [...streamBuf.keys()]) if (String(k).startsWith(sid + ":")) streamBuf.delete(k);
+		for (const k of [...streamMeta.keys()]) if (String(k).startsWith(sid + ":")) streamMeta.delete(k);
+		for (const k of [...streamAbortedTries]) if (String(k).startsWith(sid + ":")) streamAbortedTries.delete(k);
 				lastHumanRequest.delete(sid);
 				requestContext.delete(sid);
 			}
@@ -1682,14 +1685,16 @@ async function apply(ctx, config) {
 		if (streamSuppressed.has(sid)) { streamSuppressed.delete(sid); return; }
 		const fmtFault = detectFormatFault(text);
 		if (fmtFault) {
-			state.fmtFaults = (state.fmtFaults ?? 0) + 1;
+			// 先比较旧值、后自增：FMT_FAULT_MAX=2 恰好放行 2 次重驱（独立审计抓的 off-by-one）
+			const priorFaults = state.fmtFaults ?? 0;
 			const presetNow = agent.session?.header?.agentPreset ?? "";
 			auditHit(agent, 1, "[format fault: " + fmtFault + "]", state.lastRequest, presetNow, "format");
-			if (cfg.retry && state.fmtFaults <= FMT_FAULT_MAX) {
+			if (cfg.retry && priorFaults < FMT_FAULT_MAX) {
 				try {
 					agent.followup(buildFormatRetryMessage({ fault: fmtFault, lastRequest: state.lastRequest, excerptChars: cfg.excerptChars }));
 				} catch { /* 重驱失败不阻塞 */ }
 			}
+			state.fmtFaults = priorFaults + 1;
 			return;
 		}
 		state.fmtFaults = 0;
@@ -1736,6 +1741,7 @@ async function apply(ctx, config) {
 	const streamBuf = new Map(); // attemptId → 累计文本
 	const streamAbortedTries = new Set(); // 已断流的 attemptId（cancel 异步，流还在吐——一次性）
 	const streamAbortedAt = new Map(); // sid → 上次断流时刻（会话级冷却）
+	const streamMeta = new Map(); // attemptId → { len, at }（重扫节流元数据）
 	const streamSuppressed = new Set(); // sid → 本轮已被流级断流，turn-end 不再重复纠正
 	ctx.on("agent/assistant-stream", (payload) => {
 		try {
@@ -1752,7 +1758,13 @@ async function apply(ctx, config) {
 			if (streamAbortedTries.has(attemptId)) return; // 本次尝试已断过，别二次触发
 			const buf = (streamBuf.get(attemptId) ?? "") + delta;
 			streamBuf.set(attemptId, buf);
-			if (buf.length > 500000) { streamBuf.delete(attemptId); return; } // 安全上限
+			if (buf.length > 500000) { streamBuf.delete(attemptId); streamMeta.delete(attemptId); return; } // 安全上限
+			// 节流（独立审计抓的 O(n²)）：全量 split 是重扫，长报告几千 chunk 会卡事件循环。
+			// buffer 增长 ≥200 字符或距上次重扫 ≥400ms 才跑一次重扫；其余 chunk 只累加。
+			const meta = streamMeta.get(attemptId) ?? { len: 0, at: 0 };
+			const nowMs = Date.now();
+			if (buf.length - meta.len < 200 && nowMs - meta.at < 400) return;
+			meta.len = buf.length; meta.at = nowMs; streamMeta.set(attemptId, meta);
 			if (!detectStreamDegeneration(buf)) return;
 			const sidEarly = attemptId.split(":")[0];
 			const lastAt = streamAbortedAt.get(sidEarly) ?? 0;
@@ -1767,11 +1779,12 @@ async function apply(ctx, config) {
 			streamSuppressed.add(sid); // turn-end 看到这个标记就跳过格式闸门，别二次重驱
 			const presetId = agent.session?.header?.agentPreset ?? "";
 			const lastReq = lastHumanRequest.get(sid) ?? "";
-			auditHit(agent, 1, "[stream abort: degenerate-repeat]", lastReq, presetId, "format");
+			const cfgA = configSource();
+			if (cfgA.auditLog) auditHit(agent, 1, "[stream abort: degenerate-repeat]", lastReq, presetId, "format");
 			try { agent.cancel(new Error("degenerate repetition detected mid-stream"), { keepInbox: true }); } catch { /* 取消失败不阻塞 */ }
 			const cfgS = configSource();
 			const stS = guards.get(agent.id);
-			if (cfgS.retry && (stS?.fmtFaults ?? 0) <= FMT_FAULT_MAX) {
+			if (cfgS.retry && (stS?.fmtFaults ?? 0) < FMT_FAULT_MAX) {
 				try {
 					agent.followup(buildFormatRetryMessage({ fault: "degenerate-repeat", lastRequest: lastReq, excerptChars: cfgS.excerptChars }));
 				} catch { /* 重驱失败不阻塞 */ }
