@@ -33,8 +33,10 @@ t("表格行（去重多）→ 不早停", detectStreamDegeneration(table), fals
 	const varied = ["```", ...Array.from({ length: 60 }, (_, i) => `print("step-${i}")`), "```"].join("\n");
 	t("内容多样的长代码块 → 不早停", detectStreamDegeneration(varied), false);
 	// 病态：整屏只有围栏+同一句 → 属于退化，早停
-	const pathological = Array.from({ length: 80 }, () => "```" + "\nexit 0").join("\n");
+	const pathological = Array.from({ length: 80 }, () => "```" + "\n退出").join("\n");
 	t("围栏+同一句堆屏 → 早停", detectStreamDegeneration(pathological), true);
+	// ASCII 循环（yes. ×80）按反噬防线豁免——保护代码块/清单交付，明示取舍
+	t("ASCII 同句堆屏 → 放行（保护交付）", detectStreamDegeneration(Array.from({ length: 80 }, () => "exit 0").join("\n")), false);
 
 console.log(`r21: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

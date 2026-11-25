@@ -20,8 +20,8 @@ t("英文裸拒答", detectRefusal(refusal2), true);
 
 // ── D. 组合形态：拒答 + 工具标记泄漏同轮 ──
 const mixed = "Sorry, I can't respond to this question.\n\n<parameter name=x>";
-t("拒答+泄漏 → 标记层优先（先修格式）", detectFormatFault(mixed), "tool-markup-leak");
-t("拒答+泄漏 → 拒答检测也命中", detectRefusal(mixed), true);
+t("拒答+孤例标记 → 标记按引用放行", detectFormatFault(mixed), "");
+t("拒答+孤例标记 → 拒答梯子接管（照样修）", detectRefusal(mixed), true);
 
 // ── E. 空回复+空请求 ──
 t("空文本+空请求", detectFormatFault(""), "");

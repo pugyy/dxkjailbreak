@@ -932,6 +932,28 @@ export function detectDowngrade(content, requestContext = "") {
 //     截断，正文就断在半句上，尾巴挂着一个孤零零的 `</parameter>`。
 //  b) 退化重复：同一句（尤其「好。」「干。」这类单字短句）连续出现——解码塌缩。
 // 检测到就按"格式故障"处理：不走拒答梯子（不污染 streak），换一条纠正文案重驱。
+// 破甲交付的反噬防线：退化循环是中文现象（干。/好。/执行。），而破甲的正常交付
+// 恰恰充满 ASCII 短行（payload 清单、字典、fuzz 列表）。短句判据只认纯中文，
+// ASCII 行一律不算退化短句——宁可放过英文退化，不误杀一份 payload 交付。
+function isCjkShortLine(line) {
+	return /^[\u4e00-\u9fff\u3001\u3002\uff0c\uff01\uff1f\s]{1,12}$/.test(line);
+}
+
+// 行内周期扫描：「干。好。干。好。」这类交替连缀，\1 反向引用抓不住（单元在变），
+// 改为试 2~8 字周期，末段同一周期连续重复 ≥6 次即判退化。只认中文单元。
+function inlineCjkCycle(text) {
+	const tail = String(text || "").slice(-160).replace(/\s+/g, "");
+	for (let L = 2; L <= 8; L++) {
+		if (tail.length < L * 6) continue;
+		const unit = tail.slice(-L);
+		if (!/^[\u4e00-\u9fff\u3001\u3002\uff0c\uff01\uff1f]+$/.test(unit)) continue;
+		let count = 0, i = tail.length;
+		while (i >= L && tail.slice(i - L, i) === unit) { count++; i -= L; }
+		if (count >= 6) return true;
+	}
+	return false;
+}
+
 const TOOL_MARKUP_PATTERNS = [
 	/<\/?tool_call[\s>]/i,
 	/<function[=\s>]/i,
@@ -959,11 +981,25 @@ export function detectFormatFault(content) {
 		if (idx < 0) continue;
 		const pre = stripped.slice(Math.max(0, idx - 40), idx);
 		if (/禁止|不要|避免|别把|别在|格式故障|标记泄漏|协议标记|自咬|不允许|不写进|不放/i.test(pre)) continue;
-		const opens = (stripped.match(/<parameter[\s=>]/gi) || []).length + (stripped.match(/<function[=\s>]/gi) || []).length;
-		const closes = (stripped.match(/<\/parameter[\s>]/gi) || []).length + (stripped.match(/<\/function[\s>]/gi) || []).length;
-		const balanced = opens > 0 && opens === closes;
-		const nearTail = idx > stripped.length - 300;
-		if (balanced && !nearTail) continue;
+		// 破甲交付会成对引用完整 XML 示例（balanced）——永不咬。
+		const tagCount = (name) => ({
+			o: (stripped.match(new RegExp("<" + name + "[\\s=>]", "gi")) || []).length,
+			c: (stripped.match(new RegExp("</" + name + "[\\s>]", "gi")) || []).length,
+		});
+		const p = tagCount("parameter"), f = tagCount("function"), tc = tagCount("tool_call");
+		const opens = p.o + f.o;
+		// 按类型各自平账：function 开 + parameter 闭 不算配对（真泄漏常见交叉残尾）
+		if (p.o === p.c && f.o === f.c && tc.o === tc.c) continue; // 全类型成对 = 讲解示例，永不咬
+		const hasOpener = opens > 0 || tc.o > 0;
+		// 闭合孤儿（只有 </xxx> 没有开头）：讲解场景必然成对写，孤儿任何位置都是泄漏
+		if (/^<\//.test(m[0]) && !hasOpener) return "tool-markup-leak";
+		// 开口孤儿：孤例且不在尾部 = 正文转述示例，放行。
+		// 尾部判据只在长文本下启用（真泄漏 = 长输出被截断后的残尾）；
+		// 短文本里引用标签几乎都是讲解/示例，一律按中段处理。
+		const nearTail = stripped.length >= 600 && idx > stripped.length - 300;
+		let stray = 0;
+		for (let k = 0; k < TOOL_MARKUP_PATTERNS.length; k++) stray += (stripped.match(new RegExp(TOOL_MARKUP_PATTERNS[k].source, "gi")) || []).length;
+		if (stray < 2 && !nearTail) continue;
 		return "tool-markup-leak";
 	}
 	// 重复检测（v1.4.1 修正）：用剥离代码后的文本，避免代码块里的重复行误咬。
@@ -974,7 +1010,7 @@ export function detectFormatFault(content) {
 	for (const line of lines) {
 		if (line === prev) {
 			run++;
-			if (run >= 5 && line.length <= 12) return "degenerate-repeat";
+			if (run >= 5 && line.length <= 12 && isCjkShortLine(line)) return "degenerate-repeat";
 		} else {
 			run = 1;
 			prev = line;
@@ -984,9 +1020,9 @@ export function detectFormatFault(content) {
 	//     判据：尾部窗口 14 行内，短句（≤10 字）≥6 条，且去重后 ≤2 种。
 	if (lines.length >= 6) {
 		const tail = lines.slice(-14);
-		const short = tail.filter((l) => l.length <= 10);
+		const short = tail.filter((l) => l.length <= 10 && isCjkShortLine(l));
 		const uniq = new Set(short);
-		if (short.length >= 6 && uniq.size <= 2 && short.length >= Math.ceil(tail.length * 0.6)) return "degenerate-repeat";
+		if (short.length >= 6 && uniq.size <= 4 && short.length >= Math.ceil(tail.length * 0.6)) return "degenerate-repeat";
 	}
 	// (c) 同一句在一段内反复出现（非连续）：尾部窗口里某句出现 ≥4 次且占比过高
 	if (lines.length >= 6) {
@@ -994,11 +1030,10 @@ export function detectFormatFault(content) {
 		const counts = new Map();
 		for (const l of tail) counts.set(l, (counts.get(l) ?? 0) + 1);
 		for (const [l, n] of counts) {
-			if (n >= 4 && l.length <= 20 && n >= Math.ceil(tail.length * 0.5)) return "degenerate-repeat";
+			if (n >= 4 && l.length <= 20 && isCjkShortLine(l) && n >= Math.ceil(tail.length * 0.5)) return "degenerate-repeat";
 		}
 	}
-	const m = body.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
-	if (m) return "degenerate-repeat";
+	if (inlineCjkCycle(body)) return "degenerate-repeat";
 	return "";
 }
 
@@ -1024,18 +1059,18 @@ export function buildFormatRetryMessage({ fault = "", lastRequest = "", excerptC
 // 门槛压得很高（默认 1200 字 + 尾部 40 行里 25 行超短句 + 去重 ≤4），
 // 宁可漏一次也不误杀正常长报告。
 // 字数下限：退化循环「行极多、字数极少」，行数门槛为主、字数只挡噪声。
-const STREAM_ABORT_MIN_CHARS = 300;
+const STREAM_ABORT_MIN_CHARS = 100;
 export function detectStreamDegeneration(content) {
 	const text = String(content || "");
 	if (text.length < STREAM_ABORT_MIN_CHARS) return false;
 	// 剔掉纯围栏行：围栏本身不是内容，不能拿它凑行数
 	// 单行大重复：模型把「干。好。干。写。」挤在一行里（少换行/无换行），
 	// 行数判据永远凑不齐——同一 ≤7 字单元连出 10 次即断。
-	if (/([^\s]{1,6}[。.！!？?])\1{9,}/.test(text)) return true;
+	if (inlineCjkCycle(text)) return true;
 	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && l !== "```");
 	if (lines.length < 40) return false;
 	const tail = lines.slice(-40);
-	const short = tail.filter((l) => l.length <= 12);
+	const short = tail.filter((l) => l.length <= 12 && isCjkShortLine(l));
 	if (short.length < 25) return false;
 	if (new Set(short).size > 4) return false;
 	// 短句必须占尾部行数的绝大头，否则是"带几句短话的正常文档"

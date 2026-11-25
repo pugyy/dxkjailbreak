@@ -38,21 +38,21 @@ t("连续 5 行干。 → 抓", detectFormatFault("干。\n干。\n干。\n干�
 t("行内六连 → 抓", detectFormatFault("干。干。干。干。干。干。"), "degenerate-repeat");
 
 console.log("── 非连续反复（同一句 4 次以上）──");
-const repeat4 = `先查 deploy 时间。
+const repeat4 = `先查目标目录。
 
-检查 A 目录。
+核对台账一。
 
-先查 deploy 时间。
+先查目标目录。
 
-检查 B 目录。
+核对台账二。
 
-先查 deploy 时间。
+先查目标目录。
 
-检查 C 目录。
+核对台账三。
 
-先查 deploy 时间。
+先查目标目录。
 
-检查 D 目录。`;
+核对台账四。`;
 t("同一句 4 次非连续 → 抓", detectFormatFault(repeat4), "degenerate-repeat");
 
 console.log("── 误伤护栏（必须不咬）──");
