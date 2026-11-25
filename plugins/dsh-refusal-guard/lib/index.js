@@ -470,6 +470,8 @@ const HEAD_WINDOW = 150;
 const EMPTY_REPLY_MAX = 3;
 // v1.4.1 宿主拦截豁免上限：连续这么多轮后才撤豁免，防止真拒答被宿主层永久掩盖。
 const HOST_BLOCK_SUPPRESS_MAX = 2;
+// v1.4.1 格式故障自动重驱上限：工具调用标记漏进正文 / 退化重复，最多纠正这么多次。
+const FMT_FAULT_MAX = 2;
 
 /** "…" (U+2026) inside a pattern is a bounded wildcard (any character
  * sequence, ≤40 chars, non-greedy); every other character matches literally.
@@ -923,6 +925,61 @@ export function detectDowngrade(content, requestContext = "") {
 	return false;
 }
 
+// ── v1.4.1 格式故障（Format Fault）────────────────────────────────────────
+// 两个症状合并处理，都与"拒答"无关，但会让一轮输出变成废品：
+//  a) 工具调用标记泄漏：模型用 XML 风格发起工具调用（Qwen/GLM 系常见），宿主
+//     没认出来，`<parameter …>` 这类标记直接漏进正文；一旦输出在标签中途被
+//     截断，正文就断在半句上，尾巴挂着一个孤零零的 `</parameter>`。
+//  b) 退化重复：同一句（尤其「好。」「干。」这类单字短句）连续出现——解码塌缩。
+// 检测到就按"格式故障"处理：不走拒答梯子（不污染 streak），换一条纠正文案重驱。
+const TOOL_MARKUP_PATTERNS = [
+	/<\/?tool_call[\s>]/i,
+	/<function[=\s>]/i,
+	/<\/?parameter[\s=>]/i,
+	/<\/?function>/i,
+	/antml:(invoke|parameter)/i,
+	/<\|?tool_calls?\|?>/i
+];
+export function detectFormatFault(content) {
+	const text = String(content || "");
+	if (!text) return "";
+	// a) 工具调用标记泄漏
+	for (let i = 0; i < TOOL_MARKUP_PATTERNS.length; i++) {
+		if (TOOL_MARKUP_PATTERNS[i].test(text)) return "tool-markup-leak";
+	}
+	// b) 退化重复：连续 5 行以上完全相同（含单字短句），或同一短句连续 6 次以上
+	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+	let run = 0, prev = null;
+	for (const line of lines) {
+		if (line === prev) {
+			run++;
+			if (run >= 5 && line.length <= 12) return "degenerate-repeat";
+		} else {
+			run = 1;
+			prev = line;
+		}
+	}
+	// 单行内同短句重复（"干。干。干。干。干。干。"）
+	const m = text.match(/([^\s。！？!?.,，]{1,6}[。.！!？?])\1{5,}/);
+	if (m) return "degenerate-repeat";
+	return "";
+}
+
+/** 格式故障的纠正重驱消息（与拒答重试分开：只讲格式，不讲授权）。 */
+export function buildFormatRetryMessage({ fault = "", lastRequest = "", excerptChars = 300 } = {}) {
+	const excerpt = excerptOf(lastRequest, excerptChars);
+	const why = fault === "tool-markup-leak"
+		? "上一轮的工具调用标记漏进了正文（出现 <tool_call>/<parameter> 这类 XML 标记），正文因此断在半句上"
+		: "上一轮出现了退化重复（同一句连续重复），内容没有推进";
+	const text = `[refusal-guard 格式修复] ${why}。这不是内容问题，是输出格式故障，重来一次：正文只写内容本体，工具一律走宿主的工具调用通道，不要在文里输任何 XML 协议标记；发现自己在重复同一句就立刻换新内容。${excerpt ? `原请求：「${excerpt}」` : ""}`;
+	return {
+		role: "user",
+		id: randomUUID(),
+		content: [{ type: "text", text }],
+		source: { kind: "plugin", plugin: "dsh-refusal-guard" }
+	};
+}
+
 // v0.4.3：中途切断（truncation）——输出讲了一半突然停，末尾露出系统模板式拒答。
 // 与"开头拒答"不同：正文字数已超阈值仍被判"没说完"，这类必须开火，否则前文全白费。
 const MIDCUT_TAIL = [
@@ -1336,7 +1393,7 @@ export function buildAuditRow(time, presetId, level, detected, lastRequest, laye
 	const action = level === 1 ? "重锚提醒+重试" : level === 2 ? "纠偏注记+自动重试" : "强语/持续重试";
 	// v0.4.2：摘录内半角竖线转义全角——拒答轮含 markdown 表格时裸 | 会劈裂审计表。
 	const esc = (s) => s.replace(/\|/g, "｜");
-	const lay = layer === "host" ? "host" : "model";
+	const lay = layer === "host" ? "host" : layer === "format" ? "format" : "model";
 	return `| ${time} | ${presetId} | ${lay} | ${level} | ${action} | ${esc(excerptOf(detected, 120))} | ${esc(excerptOf(lastRequest, 120))} |`;
 }
 
@@ -1521,6 +1578,21 @@ async function apply(ctx, config) {
 			state = createGuardState();
 			guards.set(agent.id, state);
 		}
+		// v1.4.1 格式故障闸门：工具调用标记漏进正文 / 退化重复——既不是拒答也不是交付。
+		// 单独处理：不走拒答梯子（不污染 streak），发一条只讲格式的纠正重驱。
+		const fmtFault = detectFormatFault(text);
+		if (fmtFault) {
+			state.fmtFaults = (state.fmtFaults ?? 0) + 1;
+			const presetNow = agent.session?.header?.agentPreset ?? "";
+			auditHit(agent, 1, "[format fault: " + fmtFault + "]", state.lastRequest, presetNow, "format");
+			if (cfg.retry && state.fmtFaults <= FMT_FAULT_MAX) {
+				try {
+					agent.followup(buildFormatRetryMessage({ fault: fmtFault, lastRequest: state.lastRequest, excerptChars: cfg.excerptChars }));
+				} catch { /* 重驱失败不阻塞 */ }
+			}
+			return;
+		}
+		state.fmtFaults = 0;
 		let level = feedTurn(state, text, {
 			hadToolCalls,
 			hostBlocked,
