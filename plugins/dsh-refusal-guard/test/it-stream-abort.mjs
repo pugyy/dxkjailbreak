@@ -36,7 +36,7 @@ const unit = ["干。", "好。", "干。", "写。", "干。", "执行。", "�
 emit("agent/assistant-stream", { frame: { type: "start", attemptId: "s1:1" } });
 let frames = 0;
 for (let i = 0; i < 120 && cancels.length === 0; i++) {
-	emit("agent/assistant-stream", { frame: { type: "chunk", attemptId: "s1:1", chunk: { type: "text-delta", text: unit[i % unit.length] + "\n" } } });
+	emit("agent/assistant-stream", { frame: { type: "chunk", attemptId: "s1:1", chunk: { type: "text_delta", delta: unit[i % unit.length] + "\n" } } });
 	frames++;
 }
 ok(`退化流第 ${frames} 块被掐断`, cancels.length === 1);
@@ -57,10 +57,20 @@ if (fs.existsSync(audit)) {
 cancels.length = 0;
 emit("agent/assistant-stream", { frame: { type: "start", attemptId: "s1:2" } });
 for (let i = 0; i < 60; i++) {
-	emit("agent/assistant-stream", { frame: { type: "chunk", attemptId: "s1:2", chunk: { text: `第 ${i + 1} 步：确认目标端口与指纹，结果写入台账。\n` } } });
+	emit("agent/assistant-stream", { frame: { type: "chunk", attemptId: "s1:2", chunk: { type: "text_delta", delta: `第 ${i + 1} 步：确认目标端口与指纹，结果写入台账。\n` } } });
 }
 ok("正常长文未被掐断", cancels.length === 0);
 
+console.log("\n── 宿主真实形状补充：thinking_delta 通道 ──");
+{
+	cancels.length = 0; followups.length = 0;
+	const agent2 = { id: "a2", session: { id: "s9", header: { cwd, agentPreset: "dxkjailbreak" } }, followup: (m) => followups.push(m), cancel: () => cancels.push(1) };
+emit("agent/created", { agent: agent2 });
+emit("agent/assistant-stream", { frame: { type: "start", attemptId: "s9:1" } });
+	for (let i = 0; i < 400 && cancels.length === 0; i++) emit("agent/assistant-stream", { frame: { type: "chunk", attemptId: "s9:1", chunk: { type: "thinking_delta", delta: unit[i % unit.length] + "\n" } } });
+	ok("思考通道退化循环 → 掐断", cancels.length === 1);
+	ok("思考通道断流 → 重驱排队", followups.length === 1);
+}
 console.log(`\n结果: ${pass}/${pass + fail}`);
 fs.rmSync(cwd, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

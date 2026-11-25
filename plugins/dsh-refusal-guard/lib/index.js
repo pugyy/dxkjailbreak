@@ -1751,9 +1751,16 @@ async function apply(ctx, config) {
 			if (frame.type === "end" || frame.type === "abandoned") { streamBuf.delete(attemptId); return; }
 			if (frame.type !== "chunk") return;
 			const chunk = frame.chunk ?? {};
-			const delta = typeof chunk.text === "string"
-				? chunk.text
-				: typeof chunk.delta?.text === "string" ? chunk.delta.text : "";
+			// 宿主真实形状（独立审计实测 pi-ai）：{ type: "text_delta"|"thinking_delta", delta: "字符串" }。
+			// 字段名是 delta（纯字符串），不是 chunk.text / delta.text——对不上就永远空转。
+			// thinking_delta 也要计：退化循环大半发生在思考通道（活体样本就是）。
+			let delta = "";
+			if (typeof chunk === "string") delta = chunk;
+			else if (chunk.type === "text_delta" || chunk.type === "thinking_delta") {
+				if (typeof chunk.delta === "string") delta = chunk.delta;
+			} else if (typeof chunk.text === "string") delta = chunk.text;
+			else if (typeof chunk.delta?.text === "string") delta = chunk.delta.text;
+			else if (typeof chunk.content === "string") delta = chunk.content;
 			if (!delta) return;
 			if (streamAbortedTries.has(attemptId)) return; // 本次尝试已断过，别二次触发
 			const buf = (streamBuf.get(attemptId) ?? "") + delta;
