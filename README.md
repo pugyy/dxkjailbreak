@@ -357,7 +357,7 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 | **v1.2.40** | 回退会话 id 获取修复 |
 | **v1.2.39** | 回退按钮会话绑定、删除链路健壮性 |
 
-> 更早的内部开发记录未随仓库发布；逐版摘要见 [CHANGELOG.md](CHANGELOG.md)。
+> v1.2.1 – v1.2.48 的逐版记录已全文发布，见 [CHANGELOG.md](CHANGELOG.md)；v1.0.1 → v1.2.0 在其他机器上迭代，未留记录。
 
 ### 贡献
 
@@ -572,6 +572,8 @@ Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* re
 ### Release history
 
 > Development started on **October 21, 2026**: v1.0.0 was a **zcode plugin** (session role anchor / general session armor anchor, injected at SessionStart), later ported to **DSH**; v1.2.48 is the first stable release — earlier versions shipped as `-preview` builds.
+>
+> The full version-by-version log for v1.2.1 – v1.2.48 is published in [CHANGELOG.md](CHANGELOG.md); v1.0.1 → v1.2.0 were iterated on other machines and left no records.
 >
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
