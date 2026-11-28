@@ -53,37 +53,202 @@
 - 设置页页头紧凑化：版本号紧随名称，「检查更新」与「★ 给项目点 Star」等宽等高，页头高度约 139px → 79px
 - 版本号统一为 1.3.0
 
-## 1.2.48
-- 适配链路四层核验（宿主适配项 / 注入链路 / 文档层 / 链路适配），固化为 `test/armor-chain.mjs`
-- 版本号统一，双侧（源码 / 安装副本）一致性校验
+## 预览期逐版记录 v1.2.1 – v1.2.48（2026-11-19 → 11-21）
 
-## 1.2.47
-- 适配链路深检：核验口径与产品判定链对齐
-- 弱关键词检测契约修订（正文 >240 字时尾部 220 字内同样计入）
+> 首版 **v1.0.0** 于 **2026 年 10 月 21 日** 开工：合并 dsh-purge（宿主加固）与 dsh-redteam-model（十一域模式）为单包，十一域合一张单卡，统一李云龙身份。其后 v1.0.1 → v1.2.0 在其他机器上迭代，未留本机记录；v1.2.1 起的逐版记录如下。
 
-## 1.2.46
-- 操作体验：连点保护、军令页 Ctrl+S 快捷保存、未保存提示
+### v1.2.48（11-21）适配链路四层核验 + 并行写入异况收账
+- 四层 armor-chain 28/28：甲片 74/74 · 注入 28862 字节六锚全在 · 文档三层一致 · 链路适配 10/10；本会话四次模型切换甲未掉
+- 核验中发现树被另一会话并行改写，逐项核验等效覆盖并如实上报；版本统一 1.2.48
 
-## 1.2.45
-- 设置页观感：全局样式、页签记忆、加载动画、状态语义上色
+### v1.2.47（11-21）破甲链路三层深检 + 核验器固化 + 弱词契约修正
+- 核验器只认 markers 复数，8 条被误报未落地 → 改为复用产品判定链固化进 armor-chain（18 项）
+- 弱词断言按 v0.4.3 契约改写；补记：DS 补丁的 midzone 未定义 ReferenceError，语法检查查不出，运行时验收抓到并修复（11/11）
 
-## 1.2.44
-- 甲片表新增「原因」列（不适用逐条说明：组件未装 / 已过时 / 可选）
+### v1.2.46（11-21）操作体验：连点保护 + Ctrl+S + 功能实效核验
+- 双通道核验 UI 背后的功能链路全通（独立直调 30 项 + 真进程 HTTP 8 项），15 个 FAIL 尸检全为误伤
+- withBusy 期间锁全部按钮；军令页 Ctrl+S；未保存脏标
 
-## 1.2.43
-- 补丁计数口径统一为 n/n（分母 = 当前宿主适用；不适用条目存档可查）
-- 会话删除守卫、状态路由去重
+### v1.2.45（11-21）终审 62/62 + UI 整军容
+- 十维度 62 项全过（三份一致 / 补丁 / 注入 / YAML / 预设 / 子插件 / 运行宿主 / 安全 / 测试 / 卫生）；3 处失败查实为审计脚本断言过期
+- UI：全局样式表、激活页签蓝光条、加载脉冲、页签记忆、语义上色——纯观感零行为改动
 
-## 1.2.42
-- 「设为默认」走宿主 settings 通道；当前默认模式识别
+### v1.2.44（11-21）补丁行为验证固化为正式测试 + 12 条不适用亮明原因
+- test/patch-behavior.mjs 进回归：86 个补丁 206 条替换逐条验证，真残留必须为 0
+- 甲片表加「原因」列：12 条不适用逐条说明（组件未装 7 / 已过时 3 / 可选 2）
 
-## 1.2.41
-- 会话回退改原地截断 + 整轮语义（提问与回答成对回退）
+### v1.2.43（11-21）YAML 重复键 + 补丁行为级验证 + 设置面板 n/n 语义 + 深审追修
+- refusal-guard 的 cordis.patch.yml 重复 anchorEvery 键修复，17 个插件 yaml 严格解析通过
+- 行为级验证：193 条替换 184 条通过（95%），剩余逐个查证为设计内
+- #54 加 obsolete（rc.2 已无该句）→ 分母内 74/74，状态卡显示 applied/total
+- 设置面板深审 14 处实锤全修：参谋台三个按钮因字段错位全是摆设、工具识别恒 0/4、待打恒 0、不适用过滤恒空、删对话不传 activeSessionId
 
-## 1.2.40
-- 回退会话 id 获取修复
+### v1.2.42（11-21）修「设为默认」与「当前默认模式：未知」
+- 宿主预设服务名是 agentPresets，默认值在 settings 的 selectedDefault → 与宿主同路径写入
 
-## 1.2.39
-- 回退按钮会话绑定、删除链路健壮性
+### v1.2.41（11-21）回退：原地 + 整轮语义（提问+回答成对退）
+- 默认原地截断；强制整轮语义：退到本轮 turn/start，提问和回答一起撤，原文回填
+- 只有一轮时明确拒绝，不开空白会话
 
-预览版第一版自 **2026 年 10 月 21 日** 开工；更早版本的内部开发记录未随仓库发布。
+### v1.2.40（11-21）回退可见痕迹 + 多路 sessionId
+- 点击瞬间按钮变「回退已触发…」，一眼定位断在哪层
+- sessionId 四路兜底 + __dxkLastKnownSid 桥接
+
+### v1.2.39（11-21）回退取 props.sessionId + 删除三连与句柄重试
+- 回退没反应真因：客户端 ctx 拿不到 sessions → 优先用宿主传进来的 props.sessionId
+- 删除显示成归档：活动会话文件被宿主持句柄 → unarchive → cancel 释放 → 重试 → 仍失败绝不永久删
+
+### v1.2.38（11-20）「未分组」两种成因都处理
+- A 幽灵记录（登记了文件没了）+ B 未归属活会话（文件在没登记）→ 一个按钮处理两类
+
+### v1.2.37（11-20）修「删除后跑到未分组」
+- detachSession 正是「未分组」的制造者 → 改 purgeWorkspaceTraces 整条抹掉归属（备份 + 回读校验）
+- 新增清理历史残留，只清登记了但文件不存在的孤儿
+
+### v1.2.36（11-20）删除改送 Windows 系统回收站 + 回退菜单分两种
+- 不再自建回收站，PowerShell SendToRecycleBin；回收站不可用就返回错误，绝不悄悄永久删
+- 回退菜单三项（fork 默认 / inplace 可选）；修 notice 超 10 字整条不显示
+
+### v1.2.35（11-20）删除后从工作区消失 + 关闭 #18/#19
+- 删除后通知宿主 archiveSession / detachSession / refresh，侧边栏不再挂着
+- 破甲减弱真因：#18/#19 取消上下文保护导致注入被稀释 → 关闭，回到 74/86
+
+### v1.2.34（11-20）删除/回退的「没反应」定位与修复
+- 后端实测是好的；前端拿不到 sessionId 静默返回 → 菜单文案带 ID 末 6 位、拿不到就弹窗列 props
+- 原地回退后宿主内存不刷新 → dxkForceReloadSession 切走再切回
+
+### v1.2.33（11-20）真·原地回退 + 删除修复
+- 会话文件是多帧 zstd 拼接 → 按 magic 切帧逐帧解（10797 帧全成功），截断后单帧写回，三步保险备份
+- 实测 60466B→618B 可完整恢复；删除「没反应」真因：CONSOLE_METHODS 是加载时快照 → 新增独立路由
+
+### v1.2.32（11-20）侧边栏会话菜单加「删除对话」
+- 找到宿主 sidebar.workspaces.session.menu.item 槽位，注册 id dxk-delete（order 500）
+
+### v1.2.31（11-20）回退不再归档旧会话 + 新增删除对话 + 功能总览文档
+- fork 后归档旧会话导致界面被踢到新对话 → 默认不归档
+- 删除对话：确认窗 / dryRun / realpath 校验 / 回收站四道闸；新增 docs/FEATURES.md（280 行）
+
+### v1.2.30（11-20）回退不再推你到空白对话
+- 宿主没有原地截断原语，回退只能 fork；修两处：退到开头时明确拒绝不开空白会话；fork 新会话先 refresh 再 open
+
+### v1.2.29（11-20）按 GPT 审计逐条整改（6 条）
+- 设置页回归「假绿」是真 bug（r.presets.find 裸访问）且测试 mock 掩盖了缺字段
+- 更新检查 404 根因是占位仓库名；4 个子包声明了无法解析的依赖，已移除
+- yaml-independence 会重命名真实包目录，加了护栏
+
+### v1.2.28（11-20）12 个「不适用」修到 10 个：BOM 根因 + 开启 #18/#19
+- 真根因：PowerShell 写的 tuning.json 带 UTF-8 BOM，JSON.parse 抛错被 catch 吞 → 74→76
+- 剩下 10 个逐条列清为什么打不了（宿主无组件 / 已过时 / 预设不存在）
+
+### v1.2.27（11-20）为什么 86 个不全生效（14 个逐条）+ 独立深审
+- 74 已打 / 12 不需要 / 0 失败，逐条定性；独立深审 9 维度
+- 二次 apply 状态混乱态（内容已还原但标记丢失）彻底复位
+
+### v1.2.26（11-20）补丁 72→74（补回两块甲）+ 清掉 12 个旧人格 + MCP 改造
+- #60 run_code 审批、#62 tool ask 失败开放：目标被宿主合并进 dsh-tools → 补 file 锚点
+- 清掉 mojie 遗留 12 个旧人格（移到备份目录），预设只剩 dxkjailbreak
+- MCP 读取改走宿主 settings 服务（旧实现依赖浏览器端对象）
+
+### v1.2.25（11-20）菜单背景透明修正
+- 宿主 CSS 变量在部分主题下是半透明 → 亮 / 暗写死不透明底
+
+### v1.2.24（11-20）全盘深入体检（64 项）+ 23 页签逐个渲染 + 主题适配
+- 10 维度 64 项 0 失败；新增 test/render-panes.mjs 把 23 个面板逐个真渲染
+- 回退菜单跟随宿主主题分亮暗两套；源码目录补 5 个宿主依赖 junction
+
+### v1.2.23（11-20）回退原文回填输入框 + 切会话 + 去掉重复按钮
+- 补齐上游三段式：armComposerFill → openRewindSession → 六段延迟 setDraft
+- 去掉 input.right 重复按钮
+
+### v1.2.22（11-20）workspaces 是良性可选 + 诊断真跑 analyzeRewind
+- 服务分 REQUIRED / OPTIONAL，缺可选不报错
+- 诊断真跑一次 analyzeRewind，返回 kind / 错误原文
+
+### v1.2.21（11-20）诊断改独立路由 + sessionId 后端兜底
+- 诊断报 unknown console method：白名单是模块加载时的快照 → 改走独立路由 GET /dxkjailbreak/rewind/diag
+- sessionId 后端兜底取最近会话
+
+### v1.2.20（11-20）回退菜单打不开（漏坐标）+ 菜单内自检
+- 菜单 position:fixed 却没 left/top，飘到视口外 → 照上游 getBoundingClientRect 现算坐标
+- 菜单内自检 rewindDiag 查 6 个宿主服务
+
+### v1.2.19（11-20）回退功能救活 + 编制读取修复
+- lib/rewind.js 是空壳（1471 字符，全返回 disabled）→ 整份移植上游实现（20580 字符）
+- 按钮挂真实槽位 conversation.input.left / right；编制改磁盘优先读出 13 个预设；installPreset() 部署单卡预设
+
+### v1.2.18（11-20）回退按钮改走 DOM 注入通道
+- 宿主没有 conversation.chat.node 槽位 → 照上游做 DOM 注入：找输入区行 → createElement → createPortal + MutationObserver
+- RewindMount + RewindButton，挂载点六路兜底
+
+### v1.2.17（11-20）redteam store 注册 / MCP 依赖补齐 / 回退按钮三连修
+- redteam store 是独立子插件，合并后没人调它的 apply → 主 apply 第一行调用
+- mcp-studio entry not found 真因是 pnpm link 的 realpath → 部署副本 node_modules 建 junction；17 子插件 17/17 可加载
+
+### v1.2.16（11-20）改的代码没被加载（file: 复制陷阱）+ 回退按钮上会话工具栏
+- pnpm 对 file: 依赖是复制——存在三份代码，宿主加载的一直是 v1.2.11 旧版 → 依赖协议 file:→link:，改部署副本即生效
+- RewindButton 注册到会话工具栏；dsh.client.inject 补 dsh-client-ui-conversation
+
+### v1.2.15（11-20）403 真根因（对齐上游口径）+ 会话回退按钮
+- 比上游严了一档：上游对无 Origin 请求直接放行，而 Electron WebView 的 fetch 三头全无 → 照上游口径重写
+- 会话回退按钮（上一步 / 上一轮含子代理），POST /dxkjailbreak/rewind
+
+### v1.2.14（11-20）独立回退页签 + 补丁被启动自愈还原的真凶
+- 新增「回退」页签：还原宿主补丁 / home 指令 / 全部 / 指定备份点，还原前另存 .before-revert-*
+- 补丁 34→1 的真凶：重启自愈 detectSurface 判成 web、用 web 补丁集重打 → settleInstalledPatches 最前面校正 surface
+
+### v1.2.13（11-20）真机暴露的四个运行时故障
+- 403 自伤：同源 POST 常常不发 Origin → 改判 Sec-Fetch-Site；启动 fatal：三个侧插件 settingsScope 永久 pending → provideSettingsScope
+- 破甲没真正生效：surface 被判成 web，desktop 专属补丁全 na → 探到 resources/app 即钉 desktop（na 40+→0，已清洗 12→56）
+- bin.js 悬空 import 清除；34 个宿主文件带标记
+
+### v1.2.12（11-20）真实安装：五个装机阻塞全修
+- 宿主根解析三个连环 bug（DSH_BASE 被丢弃 / 缺有效分支 / 桌面路径被排除）；apply 从 400 秒降到 2.3 秒（跳过整份 profile 快照）
+- pnpm ERR_PNPM_IGNORED_BUILDS 被误判失败；安装器自动定位宿主（LOCALAPPDATA → Programs → resources/app）
+- 真实安装 6/6 全过，宿主 29 个文件带标记
+
+### v1.2.11（11-20）旧插件 marker 块清理不全
+- AGENTS.md 里有 9 个旧插件块，LEGACY_BLOCKS 只删 4 个 → 装完变双份指令；扩到 9 个
+- 三份指令角色划分：AGENTS.md = 身份速记 + 判定 + 方法论，prompt-inject.md = 完整身份 + 破甲正文，AGENTS.security.md = 安全约定
+
+### v1.2.10（11-20）反代场景的来源白名单（A 方案）
+- 反代终结 TLS 时 Origin(https) 与真实连接(http) 协议不符，控制台被误杀 → 配置即信任：allowed-origins.txt 一行一个，白名单判定排在 Sec-Fetch-Site 之前
+- allowOrigin RPC + 设置页「门禁 → 来源白名单」；新增 test/origin-allowlist.mjs（21 断言）
+
+### v1.2.9（11-20）补上部署副本的 yaml 独立性
+- 部署副本的 yaml 是指向源目录的 junction，源一移就 ERR_MODULE_NOT_FOUND → 改 copyTree 独立复制 + 三重检查
+- 新增 test/yaml-independence.mjs（10 断言，真跑源目录改名后 import 仍成功）；loadStatus 加 in-flight 去重
+
+### v1.2.8（11-20）DS 第九轮：设置页打不开等六条
+- 最致命：renderConsole 入口守卫把空对象拦死，设置页一个请求都不发 → 删守卫，新增 test/console-render.mjs 真跑 renderConsole({})
+- 部署目录补 yaml、两条卸载链完成条件统一、Origin 比较协议、导出脚本 shebang、不再删用户截图目录
+
+### v1.2.7（11-20）DS 复测三问全部坐实并修复
+- setWorkspace 被错误注入到 preset()、切作用域后保存写错文件（loadedScope 追踪）、会话面板 fetchToken ReferenceError
+- 新增 test/workspace-config.mjs（18 断言）；安全立场写进文档：防跨站，不防本机进程
+
+### v1.2.6（11-20）审查 DS 改动：保留其修复、恢复被关闭的功能
+- DS 用「关掉功能」解决授权问题 → 回滚：allowPluginRequest 恒 403（19 条路由全废）、前端 HTTP 分支被删、规则编辑器与参谋面板被删、workspace scope 被禁——全部恢复
+- workspace 改为持久化配置（设置页显式设定）；另修 pnpm 带空格绝对路径被 shell 切断
+
+### v1.2.5（11-20）GPT 第八轮 11 条全数修复
+- 致命回归：trackSessionCwd 只调用未定义（每个插件请求抛 ReferenceError）、CLI 卸载台账路径多一层、removeProfileInsert 误删同块其他插件
+- 前后端：编辑器加请求序号防写错文件、token 15 秒重试窗、工作区显式传参
+- 安装卸载：重复安装刷新过期依赖、卸载后依赖重装失败返回非零；UI：窄屏长包名、切页焦点、aria 标记
+
+### v1.2.4（11-20）静态全扫 + 三处健壮性 + hunter 依赖解耦
+- 189 个文件静态全扫（报高 73 / 中 25 / 低 167），逐条甄别后真隐患 3 处全修：profile 配置损坏保护、迁移记录损坏保护、回滚校验保护
+- hunter 对 redteam-results 的静态 import 改顶层 await + try/catch，依赖缺失不拖崩整个插件
+- 新增 test/install-uninstall.mjs（15 断言）
+
+### v1.2.3（11-20）补两处遗留 + 全盘复审
+- 工作区文件操作绑定会话目录（path.relative 判定）；配置写入 / 卸载回滚失败给出退出码 5/6
+- 复审抓到两处上一轮自伤：服务端要 token 前端没带（新增 token 端点）、getConsoleToken 在 ESM 里用 require（改顶部导入）
+
+### v1.2.2（11-19）GPT 审计七条全修
+- 控制台 token 授权（X-DXK-Token）、台账按 profile 分账、pnpm 失败即中止、CLI 卸载读台账还原
+- 部署目录重跑返回值统一、关面板清定时器、Node engines 对齐
+
+### v1.2.1（11-19）载荷免杀改造 · 生成器补全
+- 6 个真实载荷改 base64/.txt 存储，危险扩展名 8→0、含特征文件 6→0；读取侧加 .b64 回退解码，功能不变
+- generators.js 从 6 类补到 10 类（新增 php/jsp/aspx 冰蝎、哥斯拉、内存马），新增 generate() 纯生成接口
+- 测试落盘改走 DSH_HOME/test-tmp，不再往 %TEMP% 写真实样本触发杀软
