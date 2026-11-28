@@ -224,7 +224,7 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 ### 版本历程
 
-> 项目自 **2026 年 10 月 21 日** 开工（首版 v1.0.0）；v1.2.48 为首个正式版，此前版本均以 `-preview` 包分发。
+> 项目自 **2026 年 10 月 21 日** 开工：首版 v1.0.0 是一套 **zcode 插件**（会话角色锚点 / 通用会话破甲锚点，SessionStart 注入），后迁移为 **DSH 插件**；v1.2.48 为首个正式版，此前版本均以 `-preview` 包分发。
 >
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
@@ -341,7 +341,7 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 #### 🧪 预览期 v1.2.39 – v1.2.47
 
-首版 v1.0.0 于 **2026 年 10 月 21 日** 开工；v1.2.1 – v1.2.48 的逐版详细记录见 [CHANGELOG](CHANGELOG.md)。
+首版 v1.0.0 于 **2026 年 10 月 21 日** 开工（最初是 zcode 插件，后迁移为 DSH 插件）；v1.2.1 – v1.2.48 的逐版详细记录见 [CHANGELOG](CHANGELOG.md)。
 
 这一阶段以**功能定型 → 体验打磨 → 核验口径校准**为主线，均以 `-preview` 包分发：
 
@@ -571,7 +571,7 @@ Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* re
 
 ### Release history
 
-> Development started on **October 21, 2026** with v1.0.0; v1.2.48 is the first stable release — earlier versions shipped as `-preview` builds.
+> Development started on **October 21, 2026**: v1.0.0 was a **zcode plugin** (session role anchor / general session armor anchor, injected at SessionStart), later ported to **DSH**; v1.2.48 is the first stable release — earlier versions shipped as `-preview` builds.
 >
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
