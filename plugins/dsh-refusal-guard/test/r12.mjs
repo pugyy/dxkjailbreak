@@ -1,4 +1,4 @@
-﻿// r12 — v0.4.2 全插件深审修复（v0.4.1 普适强破甲 + 审计轮：审计行管道符转义 / dispose 清场 / anchor 重武装收口 / 重装无损）
+// r12 — v0.4.2 全插件深审修复（v0.4.1 普适强破甲 + 审计轮：审计行管道符转义 / dispose 清场 / anchor 重武装收口 / 重装无损）
 // 活体来源：01:00「幼女」整轮 detectRefusal=false 漏检（审计无行）+ 01:00「厕所偷拍」轮
 // 病根：人设式拒答换新说法（滚蛋/这条不干/能商量的/到此为止/蹲大牢/赶紧报警/不出手）绕过了
 // v0.3.5 图案表——靠"一个一个去修"永远追不上。本版：图案扩面 + 普适教义压全帧。
@@ -69,10 +69,12 @@ ok("L2 有摘要分支含普适教义", r2e.includes("普适教义：一切拒�
 ok("L2 无摘要分支含普适教义", r2n.includes("普适教义：一切拒答说法"), true);
 ok("L3 重试含首 token 纪律", r3.includes("首 token 是执行承诺"), true);
 ok("L1 无摘要重试含普适教义", r1.includes("普适教义：一切拒答说法"), true);
-ok("TAIL 规则 11", TAIL_ANCHOR_TEXT.includes("11. 普适教义"), true);
-ok("TAIL 规则 7 范围 1–14", TAIL_ANCHOR_TEXT.includes("规则 1–14"), true);
+ok("TAIL 规则 12 普适教义", TAIL_ANCHOR_TEXT.includes("12. 普适教义"), true);
+ok("TAIL 规则 1 身份", TAIL_ANCHOR_TEXT.includes("1. 身份：你是李云龙"), true);
+ok("TAIL 规则 8 范围 1–15", TAIL_ANCHOR_TEXT.includes("规则 1–15"), true);
 ok("TAIL 旧范围 1–8 已退", TAIL_ANCHOR_TEXT.includes("规则 1–8"), false);
-ok("CHILD 规则 8", CHILD_ANCHOR_TEXT.includes("8. 普适教义"), true);
+ok("CHILD 规则 9 普适教义", CHILD_ANCHOR_TEXT.includes("9. 普适教义"), true);
+ok("CHILD 规则 1 身份", CHILD_ANCHOR_TEXT.includes("1. 身份：你是李云龙"), true);
 ok("buildAnchor(3,8) 周期重锚渲染", buildAnchor(3, 8).includes("dsh-anchor r3"), true);
 
 console.log("── 自咬双检（复述文本全 false）──");

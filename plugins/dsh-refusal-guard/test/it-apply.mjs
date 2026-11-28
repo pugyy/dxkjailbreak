@@ -64,7 +64,7 @@ for (const c of promptContribs) {
 }
 console.log("渲染文本长度 =", rendered.length);
 ok("尾部锚渲染出来了", rendered.includes("<dsh-tail-anchor>") || rendered.includes("refusal-guard"));
-ok("尾部锚含规则 14", rendered.includes("规则 1–14") || rendered.includes("14."));
+ok("尾部锚含规则 15 与身份", rendered.includes("规则 1–15") && rendered.includes("李云龙"));
 
 // 工具被目标侧 403 的一轮：不该被判成宿主拦截
 const before = fs.existsSync(auditFile) ? fs.readFileSync(auditFile, "utf8").split("\n").length : 0;

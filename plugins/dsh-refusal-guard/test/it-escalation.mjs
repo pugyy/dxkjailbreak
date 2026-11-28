@@ -86,7 +86,7 @@ ok("尾部锚持续在位", r2.includes("<dsh-tail-anchor>"));
 // 子代理分流
 assemblySub = true;
 const r3 = render();
-ok("子代理会话落 CHILD 锚", r3.includes("<dsh-child-anchor>") && !r3.includes("规则 1–14"));
+ok("子代理会话落 CHILD 锚（不含主锚汇总句）", r3.includes("<dsh-child-anchor>") && r3.includes("李云龙") && !r3.includes("规则 1–15"));
 assemblySub = false;
 
 // 非 security 预设：提醒不渲染，但检测/重试不受影响
