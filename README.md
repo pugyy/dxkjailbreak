@@ -224,6 +224,8 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 
 ### 版本历程
 
+> 预览版（`-preview` 后缀）自 **2026 年 10 月 21 日** 开始开发，至 v1.2.47 止；v1.2.48 为首个正式版。
+>
 > v1.2.48 起停止 `-preview` 后缀，作为**首个正式版**发布；此后版本以 `vX.Y.Z` 标签 + GitHub Release 分发。**v1.3.0 起支持从设置页/独立团指挥部一键在线更新。**
 
 #### 🚀 v1.4.1 — 分清谁的拒绝、补齐模型适配（当前版本）
@@ -338,6 +340,8 @@ Windows / macOS / Linux 均可运行；桌面版与 Web 版宿主均可挂载。
 - 核心与子插件测试合计 600+ 断言，全部以退出码判定
 
 #### 🧪 预览期 v1.2.39 – v1.2.47
+
+预览版第一版于 **2026 年 10 月 21 日** 开工。
 
 这一阶段以**功能定型 → 体验打磨 → 核验口径校准**为主线，均以 `-preview` 包分发：
 
@@ -567,6 +571,8 @@ Start with the **DeepSeek V4 family** (V4 Pro, or V4.1-Flash at the *default* re
 
 ### Release history
 
+> Preview builds (the `-preview` suffix) were developed from **October 21, 2026** through v1.2.47; v1.2.48 is the first stable release.
+>
 > From v1.2.48 the `-preview` suffix is retired — this is the **first stable release**. Subsequent versions ship as `vX.Y.Z` tags with GitHub Releases. **From v1.3.0, one-click online updates are available from both the settings page and the command post.**
 
 #### 🚀 v1.4.1 — whose refusal is it, full model coverage (current)
